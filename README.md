@@ -45,23 +45,23 @@ Both modes route through React Router (`/eyefold/:id`, `/nightfall/:id`, plus `/
 
 ```bash
 # clone
-git clone https://github.com/<your-username>/<repo-name>.git
-cd <repo-name>
+git clone https://github.com/GoldenThrust/The-imitation-game.git
+cd ./The-imitation-game
 
 # install
+cd /backend
+npm install
+cd /frontend
 npm install
 
-# add your Gemini API key
 cp .env.example .env
-# then edit .env and set GEMINI_API_KEY=your_key_here
 
 # run
+cd /backend
 npm run dev
-```
+cd /frontend
+npm run dev
 
-The app needs both the client and the Socket.IO server running - check `package.json` scripts for whether `npm run dev` starts both concurrently or whether you need a separate `npm run server`.
-
----
 
 ## Why this fits Turing's legacy
 
