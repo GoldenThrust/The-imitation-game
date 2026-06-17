@@ -1,0 +1,32 @@
+-- CreateTable
+CREATE TABLE "Game" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "type" TEXT NOT NULL,
+    "close" BOOLEAN NOT NULL DEFAULT false,
+    "active" BOOLEAN NOT NULL DEFAULT true,
+    "startAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "endAt" DATETIME,
+    "duration" INTEGER,
+    "winner" TEXT,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" DATETIME NOT NULL
+);
+
+-- CreateTable
+CREATE TABLE "Player" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "AI" BOOLEAN NOT NULL DEFAULT false,
+    "gameId" TEXT NOT NULL,
+    CONSTRAINT "Player_gameId_fkey" FOREIGN KEY ("gameId") REFERENCES "Game" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+-- CreateTable
+CREATE TABLE "Chat" (
+    "id" TEXT NOT NULL PRIMARY KEY,
+    "text" TEXT NOT NULL,
+    "gameId" TEXT NOT NULL,
+    "playerId" TEXT NOT NULL,
+    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Chat_gameId_fkey" FOREIGN KEY ("gameId") REFERENCES "Game" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT "Chat_playerId_fkey" FOREIGN KEY ("playerId") REFERENCES "Player" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
