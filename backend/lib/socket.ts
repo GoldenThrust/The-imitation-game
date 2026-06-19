@@ -17,9 +17,15 @@ export const io = new Server(server, {
 
 const connectedPlayers = new Map();
 
+function getActiveSocket(id: string) {
+  return connectedPlayers.get(id);
+}
+
 io.on("connection", async (socket) => {
   try {
     const { roomId, playerId } = socket.handshake.query;
+
+    console.log(`Player ${playerId} connected to room ${roomId}`);
 
     socket.join(roomId as string);
     socket.join(playerId as string);
@@ -71,6 +77,8 @@ io.on("connection", async (socket) => {
       const targetSocket = connectedPlayers.get(to);
       const senderSocket = connectedPlayers.get(from);
 
+      console.log(`Message from ${from} to ${to}: ${text} (Room ID: ${roomId})`);
+
       const chat = await prisma.chat.create({
         data: {
           text,
@@ -107,23 +115,25 @@ io.on("connection", async (socket) => {
 
     socket.on("disconnect", async () => {
       // connectedPlayers.delete(playerId);
-  
+
       try {
-        // setTimeout(async () => {
-        //   const activeSocket = connectedPlayers.get(playerId);
-        //   if (activeSocket) {
-        //     return;
-        //   }
-        //   const player = await prisma.player.update({
-        //     where: {
-        //       id: playerId as string,
-        //     },
-        //     data: {
-        //       kicked: true,
-        //     },
-        //   });
-        //   io.to(roomId as string).emit("player:joined", player);
-        // }, 2000);
+        setTimeout(async () => {
+          const activeSocket = getActiveSocket(playerId as string);
+          if (activeSocket) {
+            return;
+          }
+
+          const player = await prisma.player.update({
+            where: {
+              id: playerId as string,
+            },
+            data: {
+              kicked: true,
+            },
+          });
+
+          io.to(roomId as string).emit("player:left", player);
+        }, 2000);
       } catch (error) {
         console.error("Error updating player status on disconnect:", error);
       }

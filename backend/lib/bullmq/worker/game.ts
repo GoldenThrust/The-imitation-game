@@ -5,6 +5,7 @@ import redis from "../../redis";
 import { prisma } from "../../prisma";
 import { gameQueue } from "../queue/game";
 import { quanbits } from "../../AI/AI";
+import { Role } from "../../../generated/prisma/enums";
 
 export const gameWorker = new Worker(
   "game-queue",
@@ -14,7 +15,7 @@ export const gameWorker = new Worker(
     if (action === "start") {
       const game = await prisma.game.update({
         where: { id: gameId },
-        data: { active: true, startAt: new Date() }, // 10 minutes
+        data: { active: false, startAt: new Date() }, // 10 minutes
       });
 
       gameQueue.add(
@@ -24,9 +25,25 @@ export const gameWorker = new Worker(
           action: "end",
         },
         {
-          delay: game.duration! * 1000, // 10 minutes
+          delay: game.duration! * 1000,
         },
       );
+
+      const players = await prisma.player.findMany({
+        where: {
+          gameId,
+          kicked: false,
+          role: Role.Quanbit
+        },
+      });
+
+      players.forEach((player) => {
+        const quanbit = quanbits.get(player.id);
+
+        if (quanbit) {
+          quanbit.gameStarted();
+        }
+      });
       io.to(gameId).emit("game:started");
     }
 

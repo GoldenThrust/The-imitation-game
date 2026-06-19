@@ -122,6 +122,8 @@ export default function EyefoldRoom() {
     });
 
     socket.on("player:left", () => {
+      console.log("player left");
+
       navigate(
         `/eyefold/${roomId}/reveal?reason=${encodeURIComponent("player left")}`
       );

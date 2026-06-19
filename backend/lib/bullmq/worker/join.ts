@@ -73,7 +73,7 @@ export const joinWorker = new Worker(
 
     if (isAI) {
       io.to(gameId).emit("player:joined", player);
-      quanbits.set(player.id, new Quanbit(game.type));
+      quanbits.set(player.id, new Quanbit(game.type, player.id, game.id));
     }
 
     return player;

@@ -82,6 +82,19 @@ app.get("/room", async (req, res) => {
       );
     }
 
+    if (game.type === GameType.NightFall && players.length >= 5) {
+      gameQueue.add(
+        "game-queue",
+        {
+          gameId: game.id,
+          action: "start",
+        },
+        {
+          delay: 5000,
+        },
+      );
+    }
+
     const player = await prisma.player.create({
       data: {
         gameId: game.id,
@@ -129,6 +142,45 @@ app.get("/game-room/:id", async (req, res) => {
       where: {
         gameId: id,
         kicked: false,
+      },
+    });
+
+    return res.json({
+      message: "successful",
+      players,
+      game,
+    });
+  } catch (error) {
+    return res.json({
+      message: "Error finding game",
+    });
+  }
+});
+
+app.get("/game-room/:id/vote", async (req, res) => {
+  const { id } = req.params;
+  const { voterId, votedFor } = req.body;
+
+  try {
+    const inRoom = await prisma.player.findUnique({
+      where: {
+        id: voterId as string,
+        gameId: id,
+      },
+    });
+
+    const game = await prisma.game.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!inRoom || !game) throw new Error("Error finding game");
+
+    const players = await prisma.player.findMany({
+      where: {
+        gameId: id,
+        role: Role.Quanbit,
       },
     });
 

@@ -7,6 +7,7 @@ import Home from "./pages/Home";
 import Lobby from "./pages/eyefold/Lobby";
 import Game from "./pages/eyefold/Room";
 import Vote from "./pages/eyefold/Vote";
+import Reveal from "./pages/eyefold/Reveal"
 import NightLobby from "./pages/nightfall/Lobby";
 import NightGame from "./pages/nightfall/Room";
 import DayBreak from "./pages/nightfall/DayBreak";
@@ -21,6 +22,7 @@ createRoot(document.getElementById('root')).render(
           <Route path=":id" element={<Lobby />} />
           <Route path="room/:id" element={<Game />} />
           <Route path=":id/vote" element={<Vote />} />
+          <Route path=":id/reveal" element={<Reveal />} />
         </Route>
         <Route path='nightfall'>
           <Route path=":id" element={<NightLobby />} />

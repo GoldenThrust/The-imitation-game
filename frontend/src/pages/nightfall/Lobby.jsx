@@ -74,7 +74,7 @@ export default function NightfallLobby() {
       });
     });
 
-    socket.on("game:started", ()=> navigate(`/eyefold/room/${roomId}?id=${id}`));
+    socket.on("game:started", ()=> navigate(`/nightfall/room/${roomId}?id=${id}`));
 
 
     // socket.on("player:left", () => {

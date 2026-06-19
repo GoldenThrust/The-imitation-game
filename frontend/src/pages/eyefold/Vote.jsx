@@ -19,21 +19,15 @@ export default function EyefoldVote() {
     setSubmitting(true);
 
     try {
-      const response = await fetch(`${baseUrl}/game-room/${roomId}/vote`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ voterId: myId, votedFor: selected }),
-      });
-
-      const data = await response.json();
-
+      const quanbits = players.filter((bit) => bit.role === "Quanbit");
       // server tells us the outcome — pass it forward via navigation state
       navigate(`/eyefold/${roomId}/reveal`, {
         state: {
           votedFor: selected,
-          quanbitId: data.quanbitId,
-          correct: data.quanbitId === selected,
+          quanbitId: quanbits[0].id,
+          correct: quanbits[0].id === selected,
           players,
+          playerId: myId
         },
       });
     } catch (error) {
@@ -104,8 +98,6 @@ export default function EyefoldVote() {
       );
     });
 
-    socket.on("game:started", () => navigate(`/eyefold/room/${roomId}?id=${myId}`));
-
     socket.on("disconnect", reason => {
       console.log("Socket disconnected:", reason);
     });
@@ -130,9 +122,8 @@ export default function EyefoldVote() {
           <button
             key={p.id}
             onClick={() => setSelected(p.id)}
-            className={`w-full text-left rounded-xl p-4 transition-all bg-[#111114] ${
-              selected === p.id ? 'border-2 border-purple-500' : 'border border-[#232328] hover:border-[#3a3a42]'
-            }`}
+            className={`w-full text-left rounded-xl p-4 transition-all bg-[#111114] ${selected === p.id ? 'border-2 border-purple-500' : 'border border-[#232328] hover:border-[#3a3a42]'
+              }`}
           >
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-[#1a1a2e] text-purple-300 flex items-center justify-center font-medium text-sm">
@@ -148,9 +139,8 @@ export default function EyefoldVote() {
         <button
           onClick={submit}
           disabled={!selected || submitting}
-          className={`py-2.5 rounded-lg text-sm font-medium ${
-            selected && !submitting ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-[#1c1c20] text-gray-600 cursor-not-allowed'
-          }`}
+          className={`py-2.5 rounded-lg text-sm font-medium ${selected && !submitting ? 'bg-purple-600 text-white hover:bg-purple-700' : 'bg-[#1c1c20] text-gray-600 cursor-not-allowed'
+            }`}
         >
           {submitting ? 'Submitting...' : 'Submit vote'}
         </button>

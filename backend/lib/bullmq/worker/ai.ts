@@ -10,7 +10,7 @@ export const aiWorker = new Worker(
   async (job) => {
     const { gameId, from, to, respondSocket, text } = job.data;
 
-    const newText = `Player id: ${from} says: ${text}`;
+    const newText = `Player ${from}: ${text}`;
 
 
     const quanbit = quanbits.get(to);

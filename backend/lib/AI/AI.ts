@@ -4,25 +4,35 @@ import { aiQueue } from "../bullmq/queue/ai";
 import { responseDelay } from "../../utils";
 import { GameType } from "../../generated/prisma/enums";
 import { eyefoldTools, nightfallTools } from "./gemini/tools";
+import { io } from "../socket";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GOOGLE_API_KEY!,
 });
 export type QuanbitAction =
-  | { type: "message"; message: string; targetPlayerId?: string; typingDelayMs?: number }
+  | {
+      type: "message";
+      message: string;
+      targetPlayerId?: string;
+      typingDelayMs?: number;
+    }
   | { type: "vote"; targetPlayerId: string; publicReason: string };
 
 export default class Quanbit {
   chat: any;
   private gameType: GameType;
+  private id: string;
+  private roomId: string;
 
-  constructor(type: GameType) {
+  constructor(type: GameType, id: string, roomId: string) {
     this.gameType = type;
+    this.id = id;
+    this.roomId = roomId;
 
     const tools = type === GameType.NightFall ? nightfallTools : eyefoldTools;
 
     this.chat = ai.chats.create({
-      model: "gemini-3-flash-preview",
+      model: "gemini-3.5-flash",
       config: {
         systemInstruction:
           type === GameType.NightFall
@@ -32,9 +42,28 @@ export default class Quanbit {
         tools: [{ functionDeclarations: tools }],
         // force a tool call every turn so we never get unstructured prose
         // we'd have to fall back on
-        toolConfig: { functionCallingConfig: { mode: FunctionCallingConfigMode.ANY } },
+        toolConfig: {
+          functionCallingConfig: { mode: FunctionCallingConfigMode.ANY },
+        },
       },
     });
+  }
+
+  async gameStarted() {
+    const actions = await this.sendMessageToAI("Game Started. Make the first move if you like.");
+
+    for (const action of actions) {
+      if (action.type === "message") {
+        io.to(this.roomId).emit("message:receive", {
+          id: 0,
+          text: action.message,
+          from: this.id,
+          to: this.id,
+          createdAt: Date.now(),
+        });
+      }
+    }
+    
   }
 
   async addMessageToQueue(data: {
@@ -51,7 +80,7 @@ export default class Quanbit {
     });
 
     console.log(
-      `Added job to queue for game ${data.gameId}: ${data.from} -> ${data.to}: ${data.text}`
+      `Added job to queue for game ${data.gameId}: ${data.from} -> ${data.to}: ${data.text}`,
     );
   }
 
@@ -73,7 +102,7 @@ export default class Quanbit {
 
     console.log(
       `Parsed ${actions.length} action(s) from AI response:`,
-      JSON.stringify(actions)
+      JSON.stringify(actions),
     );
 
     return actions;
@@ -85,7 +114,7 @@ export default class Quanbit {
     if (calls.length === 0) {
       console.warn(
         "Gemini returned no function calls (likely plain text). Treating as no action.",
-        response.text
+        response.text,
       );
       return [];
     }
@@ -97,10 +126,18 @@ export default class Quanbit {
         case "respondToMessage": {
           const { message, targetPlayerId, typingDelayMs } = call.args ?? {};
           if (!message || typeof message !== "string") {
-            console.warn("Malformed respondToMessage args, skipping:", call.args);
+            console.warn(
+              "Malformed respondToMessage args, skipping:",
+              call.args,
+            );
             break;
           }
-          actions.push({ type: "message", message, targetPlayerId, typingDelayMs });
+          actions.push({
+            type: "message",
+            message,
+            targetPlayerId,
+            typingDelayMs,
+          });
           break;
         }
 
