@@ -21,7 +21,7 @@ export default function NightfallLobby() {
     async function fetchPlayers() {
       try {
         const response = await fetch(
-          `${baseUrl}/room/${roomId}/players?id=${id}`
+          `${baseUrl}/game-room/${roomId}?id=${id}`
         );
 
         const data = await response.json();
@@ -74,13 +74,16 @@ export default function NightfallLobby() {
       });
     });
 
-    socket.on("player:left", () => {
-      navigate(
-        `/eyefold/${roomId}/reveal?reason=${encodeURIComponent(
-          "player left"
-        )}`
-      );
-    });
+    socket.on("game:started", ()=> navigate(`/eyefold/room/${roomId}?id=${id}`));
+
+
+    // socket.on("player:left", () => {
+    //   navigate(
+    //     `/eyefold/${roomId}/reveal?reason=${encodeURIComponent(
+    //       "player left"
+    //     )}`
+    //   );
+    // });
 
     socket.on("disconnect", reason => {
       console.log("Socket disconnected:", reason);

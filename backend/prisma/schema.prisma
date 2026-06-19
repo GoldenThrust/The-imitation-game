@@ -33,7 +33,7 @@ model Game {
   active    Boolean   @default(true)
   startAt   DateTime  @default(now())
   endAt     DateTime?
-  duration  Int?
+  duration  Int
   winner    Winner?
 
   players   Player[]
@@ -70,4 +70,21 @@ model Chat {
   toPlayer   Player   @relation("ChatReceiver", fields: [toPlayerId], references: [id])
 
   createdAt DateTime @default(now())
+}
+
+model Vote {
+  id         String   @id @default(cuid())
+  gameId     String
+  game       Game     @relation(fields: [gameId], references: [id])
+
+  voterId    String
+  targetId   String
+
+  round      Int      @default(1)
+  reason     String?
+
+  createdAt  DateTime @default(now())
+
+  @@unique([gameId, voterId, round])
+  @@index([gameId, targetId])
 }

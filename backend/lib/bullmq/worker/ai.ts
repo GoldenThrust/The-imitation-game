@@ -8,47 +8,78 @@ import redis from "../../redis";
 export const aiWorker = new Worker(
   "respond",
   async (job) => {
-    const { gameId, from, to, senderSocket, text } = job.data;
+    const { gameId, from, to, respondSocket, text } = job.data;
 
     const newText = `Player id: ${from} says: ${text}`;
 
-    const decision = shouldRespond();
-
-
-    if (decision === "ignore") {
-      return;
-    }
 
     const quanbit = quanbits.get(to);
 
+    console.log(
+      `Retrieved Quanbit for game ${gameId}: ${quanbit ? "found" : "not found"} for message from ${from} to ${to}: ${text}`
+    );
 
     if (!quanbit) {
       return;
     }
 
-    const aiText = await quanbit.sendMessageToAI(newText);
+    const actions = await quanbit.sendMessageToAI(newText);
 
+    console.log(
+      `AI actions for game ${gameId}:`,
+      JSON.stringify(actions),
+      `for message from ${from} to ${to}: ${text}`
+    );
 
-    const chat = await prisma.chat.create({
-      data: {
-        text: aiText,
-        playerId: to,
-        toPlayerId: from,
-        gameId,
-      },
-    });
+    const createdChats = [];
 
-    io.to(senderSocket).emit("message:receive", {
-      id: chat.id,
-      text: chat.text,
-      from: to,
-      to: from,
-      createdAt: chat.createdAt,
-    });
+    for (const action of actions) {
+      if (action.type === "message") {
+        const chat = await prisma.chat.create({
+          data: {
+            text: action.message,
+            playerId: to,
+            toPlayerId: action.targetPlayerId ?? from,
+            gameId,
+          },
+        });
 
-    return chat;
+        if (action.typingDelayMs && action.typingDelayMs > 0) {
+          await new Promise((resolve) => setTimeout(resolve, action.typingDelayMs));
+        }
+        
+        io.to(respondSocket).emit("message:receive", {
+          id: chat.id,
+          text: chat.text,
+          from: to,
+          to: action.targetPlayerId ?? from,
+          createdAt: chat.createdAt,
+        });
+
+        createdChats.push(chat);
+      }
+
+      if (action.type === "vote") {
+        // adjust to your actual vote persistence model/table
+        // await prisma.vote.create({
+        //   data: {
+        //     gameId,
+        //     voterId: to,
+        //     targetId: action.targetPlayerId,
+        //     reason: action.publicReason,
+        //   },
+        // });
+
+        io.to(respondSocket).emit("vote:cast", {
+          voterId: to,
+          targetId: action.targetPlayerId,
+        });
+      }
+    }
+
+    return createdChats;
   },
   {
     connection: redis as ConnectionOptions,
-  },
+  }
 );

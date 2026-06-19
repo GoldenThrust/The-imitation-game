@@ -21,7 +21,7 @@ export default function EyefoldLobby() {
     async function fetchPlayers() {
       try {
         const response = await fetch(
-          `${baseUrl}/room/${roomId}/players?id=${id}`
+          `${baseUrl}/game-room/${roomId}?id=${id}`
         );
 
         const data = await response.json();
@@ -82,6 +82,8 @@ export default function EyefoldLobby() {
       );
     });
 
+    socket.on("game:started", ()=> navigate(`/eyefold/room/${roomId}?id=${id}`));
+
     socket.on("disconnect", reason => {
       console.log("Socket disconnected:", reason);
     });
@@ -91,11 +93,11 @@ export default function EyefoldLobby() {
     };
   }, [roomId, id, navigate]);
 
-  useEffect(() => {
-    if (players.length >= 3) {
-      navigate(`/eyefold/room/${roomId}?id=${id}`);
-    }
-  }, [players, navigate, roomId, id])
+  // useEffect(() => {
+  //   if (players.length >= 3) {
+      
+  //   }
+  // }, [players, navigate, roomId, id])
 
   const slots = [
     ...players,

@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route } from 'react-router';
 import Home from "./pages/Home";
 import Lobby from "./pages/eyefold/Lobby";
 import Game from "./pages/eyefold/Room";
-import Reveal from "./pages/eyefold/Reveal";
 import Vote from "./pages/eyefold/Vote";
 import NightLobby from "./pages/nightfall/Lobby";
 import NightGame from "./pages/nightfall/Room";
@@ -21,8 +20,7 @@ createRoot(document.getElementById('root')).render(
         <Route path='eyefold'>
           <Route path=":id" element={<Lobby />} />
           <Route path="room/:id" element={<Game />} />
-          <Route path="room/:id/vote" element={<Vote />} />
-          <Route path="room/:id/reveal" element={<Reveal />} />
+          <Route path=":id/vote" element={<Vote />} />
         </Route>
         <Route path='nightfall'>
           <Route path=":id" element={<NightLobby />} />

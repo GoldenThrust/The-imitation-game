@@ -7,6 +7,7 @@ import redis from "../../redis";
 import { prisma } from "../../prisma";
 import Quanbit, { quanbits } from "../../AI/AI";
 import { GameType, Role } from "../../../generated/prisma/enums";
+import { gameQueue } from "../queue/game";
 
 export const joinWorker = new Worker(
   "join-queue",
@@ -53,6 +54,22 @@ export const joinWorker = new Worker(
         role: isAI ? Role.Quanbit : Role.Human,
       },
     });
+
+    if (
+      (game!.type === GameType.EyeFold && players.length >= 2) ||
+      players.length >= 9
+    ) {
+      await gameQueue.add(
+        "game-queue",
+        {
+          gameId: game!.id,
+          action: "start",
+        },
+        {
+          delay: 2000,
+        },
+      );
+    }
 
     if (isAI) {
       io.to(gameId).emit("player:joined", player);

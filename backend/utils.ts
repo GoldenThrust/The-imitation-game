@@ -27,12 +27,11 @@ export function shouldRespond() {
 export function responseDelay(message: string) {
   const words = message.split(" ").length;
 
-  const readingTime = words * 400;
+  const readingTime = words * 100;
 
   return (
     readingTime +
-    1000 +
-    Math.floor(Math.random() * 15000)
+    Math.floor(Math.random() * 5000)
   );
 }
 

@@ -21,24 +21,26 @@ export default function EyefoldRoom() {
   useEffect(() => {
     const t = setInterval(() => {
       setTimeLeft(s => {
-        if (s <= 1) { clearInterval(t); navigate(`/eyefold/${roomId}/vote`); return 0; }
+        if (s <= 1) { clearInterval(t); navigate(`/eyefold/${roomId}/vote?id=${myId}`); return 0; }
         return s - 1;
       });
     }, 1000);
     return () => clearInterval(t);
-  }, [roomId, navigate]);
+  }, [roomId, navigate, myId]);
 
   // Fetch existing players
   useEffect(() => {
     async function fetchPlayers() {
       try {
         const response = await fetch(
-          `${baseUrl}/room/${roomId}/players?id=${myId}`
+          `${baseUrl}/game-room/${roomId}?id=${myId}`
         );
 
         const data = await response.json();
 
-        console.log(data)
+        const timeLeft = (data.game.duration * 1000) - (Date.now() - (new Date(data.game.startAt)));
+
+        setTimeLeft(Math.floor(timeLeft / 1000));
 
         setPlayers(prev => {
           const newPlayers = data.players.filter(
@@ -103,6 +105,7 @@ export default function EyefoldRoom() {
     });
 
     socket.on("player:joined", player => {
+      if (!player?.id) return;
       setPlayers(prev => {
         const exists = prev.some(p => p.id === player.id);
         if (exists) return prev;
@@ -165,9 +168,8 @@ export default function EyefoldRoom() {
               {(chats[p.id] || []).map((m, i) => (
                 <div
                   key={i}
-                  className={`text-xs px-3 py-2 rounded-lg max-w-[80%] ${
-                    m.from === 'me' ? 'self-end bg-[#1c1c20] text-gray-200' : 'bg-[#1a1a2e] text-gray-300'
-                  }`}
+                  className={`text-xs px-3 py-2 rounded-lg max-w-[80%] ${m.from === 'me' ? 'self-end bg-[#1c1c20] text-gray-200' : 'bg-[#1a1a2e] text-gray-300'
+                    }`}
                 >
                   {m.text}
                 </div>
@@ -188,14 +190,14 @@ export default function EyefoldRoom() {
           </div>
         ))}
       </div>
-      <div className="px-4 py-3 border-t border-[#1c1c20] flex justify-end">
+      {/* <div className="px-4 py-3 border-t border-[#1c1c20] flex justify-end">
         <button
           onClick={() => navigate(`/eyefold/${roomId}/vote`)}
           className="bg-red-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-red-700"
         >
           End chat & vote →
         </button>
-      </div>
+      </div> */}
     </div>
   );
 }

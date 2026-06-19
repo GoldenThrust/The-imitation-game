@@ -5,6 +5,7 @@ import { joinQueue } from "./lib/bullmq/queue/join";
 import { initQueues } from "./lib/bullmq";
 import { GameType, Role } from "./generated/prisma/enums";
 import cors from "cors";
+import { gameQueue } from "./lib/bullmq/queue/game";
 
 const PORT = 3000;
 const app = express();
@@ -34,6 +35,7 @@ app.get("/room", async (req, res) => {
         data: {
           type: gameType,
           active: true,
+          duration: gameType === GameType.NightFall ? 60 * 10 : 60 * 5, // 10 minutes for NightFall, 5 minutes for EyeFold
         },
       });
 
@@ -103,7 +105,7 @@ app.get("/room", async (req, res) => {
   }
 });
 
-app.get("/room/:id/players", async (req, res) => {
+app.get("/game-room/:id", async (req, res) => {
   const { id } = req.params;
   const { id: playerId } = req.query;
 
@@ -115,7 +117,13 @@ app.get("/room/:id/players", async (req, res) => {
       },
     });
 
-    if (!inRoom) throw new Error("Error fetching game");
+    const game = await prisma.game.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    if (!inRoom || !game) throw new Error("Error finding game");
 
     const players = await prisma.player.findMany({
       where: {
@@ -127,10 +135,11 @@ app.get("/room/:id/players", async (req, res) => {
     return res.json({
       message: "successful",
       players,
+      game,
     });
   } catch (error) {
     return res.json({
-      message: "Error finding players",
+      message: "Error finding game",
     });
   }
 });
