@@ -45,28 +45,30 @@ io.on("connection", async (socket) => {
       },
     });
 
-    const players = await prisma.player.findMany({
-      where: {
-        gameId: game!.id,
-        kicked: false,
-      },
-    });
+    // const players = await prisma.player.findMany({
+    //   where: {
+    //     gameId: game!.id,
+    //     kicked: false,
+    //   },
+    // });
 
-    if (
-      (game!.type === GameType.EyeFold && players.length >= 3) ||
-      players.length >= 10
-    ) {
-      await gameQueue.add(
-        "game-queue",
-        {
-          gameId: game!.id,
-          action: "start",
-        },
-        {
-          delay: 2000,
-        },
-      );
-    }
+    // const humanPlayers = players.filter((player) => player.role === Role.Human);
+
+    // if (
+    //   (game!.type === GameType.EyeFold && humanPlayers.length >= 2) ||
+    //   players.length >= 10
+    // ) {
+    //   await gameQueue.add(
+    //     "game-queue",
+    //     {
+    //       gameId: game!.id,
+    //       action: "start",
+    //     },
+    //     {
+    //       delay: 2000,
+    //     },
+    //   );
+    // }
 
     socket.broadcast.to(roomId as string).emit("player:joined", player);
 
@@ -99,7 +101,7 @@ io.on("connection", async (socket) => {
       });
 
       if (game!.type === GameType.EyeFold) {
-        const quanbit = quanbits.get(to);
+        const quanbit = quanbits.get(`${to}-${from}`);
 
         if (!quanbit) return;
 
@@ -107,7 +109,7 @@ io.on("connection", async (socket) => {
           gameId: roomId as string,
           from,
           to,
-          respondSocket: senderSocket,
+          respondSocket: from,
           text,
           chatId: chat.id,
         });

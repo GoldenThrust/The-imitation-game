@@ -1,8 +1,7 @@
 import { ConnectionOptions, Worker } from "bullmq";
-import { shouldRespond } from "../../../utils";
 import { quanbits } from "../../AI/AI";
 import { prisma } from "../../prisma";
-import { connectedPlayers, io } from "../../socket";
+import { io } from "../../socket";
 import redis from "../../redis";
 import { Role } from "../../../generated/prisma/browser";
 import { voteQueue } from "../queue/vote";
@@ -10,17 +9,21 @@ import { voteQueue } from "../queue/vote";
 export const aiWorker = new Worker(
   "respond",
   async (job) => {
+    console.log("Processing AI job with data:", job.data);
     const { gameId, from, to, respondSocket, text, myId } = job.data;
 
-    const newText = `Player ${from}: ${text}`;
+    const newText = from === to ? `System: ${text}` : `Player ${from}: ${text}`;
 
-    const quanbit = quanbits.get(to);
+    const quanbit = quanbits.get(myId);
 
-    // console.log(
-    //   `Retrieved Quanbit for game ${gameId}: ${quanbit ? "found" : "not found"} for message from ${from} to ${to}: ${text}`,
-    // );
+    console.log(
+      `Retrieved Quanbit for game ${gameId}: ${quanbit ? "found" : "not found"} for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
+    );
 
     if (!quanbit) {
+      console.warn(
+        `Quanbit with ID ${to} not found for game ${gameId}. Available quanbits: ${[...quanbits.keys()].join(", ")}`,
+      );
       return;
     }
 
@@ -29,7 +32,7 @@ export const aiWorker = new Worker(
     console.log(
       `AI actions for game ${gameId}:`,
       JSON.stringify(actions),
-      `for message from ${from} to ${to}: ${text}`,
+      `for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
     );
 
     const createdChats = [];
@@ -46,43 +49,49 @@ export const aiWorker = new Worker(
         });
 
         if (action.typingDelayMs && action.typingDelayMs > 0) {
-          await new Promise((resolve) =>
+          await new Promise<void>((resolve, reject) => {
             setTimeout(async () => {
-              io.to(respondSocket).emit("message:receive", {
-                id: chat.id,
-                text: chat.text,
-                from: to,
-                to: action.targetPlayerId ?? from,
-                createdAt: chat.createdAt,
-              });
-
-              const AIs = await prisma.player.findMany({
-                where: {
-                  gameId: gameId as string,
-                  role: Role.Quanbit,
-                },
-              });
-
-              for (const AI of AIs) {
-                const quanbit = quanbits.get(AI.id);
-
-                if (!quanbit || AI.id === myId) return;
-
-                await quanbit.addMessageToQueue({
-                  gameId: gameId as string,
-                  from,
-                  to: AI.id,
-                  respondSocket: gameId as string,
-                  text,
-                  chatId: chat.id,
+              try {
+                console.log(
+                  `Sending message from ${to} to ${action.targetPlayerId ?? from} after typing delay of ${action.typingDelayMs}ms: ${action.message} using socket ${respondSocket}`,
+                );
+                io.to(respondSocket).emit("message:receive", {
+                  id: chat.id,
+                  text: chat.text,
+                  from: to,
+                  to: action.targetPlayerId ?? from,
+                  createdAt: chat.createdAt,
                 });
+
+                const AIs = await prisma.player.findMany({
+                  where: {
+                    gameId: gameId as string,
+                    role: Role.Quanbit,
+                  },
+                });
+
+                for (const AI of AIs) {
+                  const quanbit = quanbits.get(AI.id);
+
+                  if (!quanbit || AI.id === myId) continue; // ✅ skip, don't exit
+
+                  await quanbit.addMessageToQueue({
+                    gameId: gameId as string,
+                    from,
+                    to: AI.id,
+                    respondSocket: gameId as string,
+                    text,
+                    chatId: chat.id,
+                  });
+                }
+
+                resolve();
+              } catch (err) {
+                reject(err); // ✅ don't swallow errors silently
               }
-
-              resolve(true);
-            }, action.typingDelayMs),
-          );
+            }, action.typingDelayMs);
+          });
         }
-
         createdChats.push(chat);
       }
 
@@ -100,5 +109,6 @@ export const aiWorker = new Worker(
   },
   {
     connection: redis as ConnectionOptions,
+    concurrency: 5,
   },
 );

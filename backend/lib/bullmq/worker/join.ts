@@ -12,7 +12,7 @@ import { gameQueue } from "../queue/game";
 export const joinWorker = new Worker(
   "join-queue",
   async (job) => {
-    const { gameId, isAI } = job.data;
+    const { gameId, isAI, attachPlayerId } = job.data;
 
     if (isAI) {
       await sleep(humanJoinDelay());
@@ -33,9 +33,38 @@ export const joinWorker = new Worker(
       },
     });
 
+    console.log(
+      `Processing join job for game ${gameId} with isAI=${isAI} and attachPlayerId=${attachPlayerId}`,
+    );
+  
+    const humanPlayers = players.filter((player) => player.role === Role.Human);
+
+    const AIPlayers = players.filter((player) => player.role === Role.Quanbit);
+    
+    console.log(`Human players in game ${gameId}: ${humanPlayers.length}`);
+
+    console.log(
+      `Player ${isAI ? "AI" : "Human"} joined game ${gameId}. Total players: ${players.length}, AI players: ${AIPlayers.length}`,
+    );
+    if (game.type === GameType.EyeFold && AIPlayers.length >= 2) {
+      console.log(`Game ${gameId} is EyeFold and already has an AI player. Not allowing more AI players.`);
+      return;
+    }
+
+    if (players.length >= 10) {
+      return;
+    }
+    
+    const player = await prisma.player.create({
+      data: {
+        gameId: gameId,
+        role: isAI ? Role.Quanbit : Role.Human,
+      },
+    });
+    
     if (
-      (game.type === GameType.EyeFold && players.length >= 3) ||
-      players.length >= 10
+      (game!.type === GameType.EyeFold && AIPlayers.length >= 1) ||
+      players.length >= 9
     ) {
       await prisma.game.update({
         where: {
@@ -45,20 +74,6 @@ export const joinWorker = new Worker(
           active: false,
         },
       });
-      return;
-    }
-
-    const player = await prisma.player.create({
-      data: {
-        gameId: gameId,
-        role: isAI ? Role.Quanbit : Role.Human,
-      },
-    });
-
-    if (
-      (game!.type === GameType.EyeFold && players.length >= 2) ||
-      players.length >= 9
-    ) {
       await gameQueue.add(
         "game-queue",
         {
@@ -72,11 +87,20 @@ export const joinWorker = new Worker(
     }
 
     if (isAI) {
-      io.to(gameId).emit("player:joined", player);
-      quanbits.set(player.id, new Quanbit(game.type, player.id, game.id));
+      console.log(`AI player ${player.id} joined game ${gameId}`);
+      if (attachPlayerId) {
+        quanbits.set(
+          `${player.id}-${attachPlayerId}`,
+          new Quanbit(game.type, `${player.id}-${attachPlayerId}`, game.id),
+        );
+        io.to(attachPlayerId).emit("player:joined", player);
+      } else {
+        quanbits.set(player.id, new Quanbit(game.type, player.id, game.id));
+        io.to(gameId).emit("player:joined", player);
+      }
     }
 
     return player;
   },
-  { connection: redis as ConnectionOptions },
+  { connection: redis as ConnectionOptions, concurrency: 5 },
 );

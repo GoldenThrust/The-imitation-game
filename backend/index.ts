@@ -6,6 +6,7 @@ import { initQueues } from "./lib/bullmq";
 import { GameType, Role } from "./generated/prisma/enums";
 import cors from "cors";
 import { gameQueue } from "./lib/bullmq/queue/game";
+import { quanbits } from "./lib/AI/AI";
 
 const PORT = 3000;
 const app = express();
@@ -38,11 +39,6 @@ app.get("/room", async (req, res) => {
           duration: gameType === GameType.NightFall ? 60 * 10 : 60 * 5, // 10 minutes for NightFall, 5 minutes for EyeFold
         },
       });
-
-      await joinQueue.add("join", {
-        gameId: game.id,
-        isAI: true,
-      });
     }
 
     const players = await prisma.player.findMany({
@@ -59,9 +55,11 @@ app.get("/room", async (req, res) => {
       });
     }
 
+    const humanPlayers = players.filter((player) => player.role === Role.Human);
+
     if (
-      (game.type === GameType.EyeFold && players.length >= 2) ||
-      players.length >= 8
+      (game.type === GameType.EyeFold && humanPlayers.length >= 1) ||
+      humanPlayers.length >= 8
     ) {
       await prisma.game.update({
         where: {
@@ -75,7 +73,7 @@ app.get("/room", async (req, res) => {
 
     if (
       players.length >= 10 ||
-      (game.type === GameType.EyeFold && players.length >= 3)
+      (game.type === GameType.EyeFold && humanPlayers.length >= 2)
     ) {
       return res.redirect(
         `${process.env.CLIENT_URL}?error=game is full. try again`,
@@ -101,6 +99,14 @@ app.get("/room", async (req, res) => {
         role: Role.Human,
       },
     });
+
+    if (gameType === GameType.EyeFold) {
+      await joinQueue.add("join", {
+        isAI: true,
+        gameId: game.id,
+        attachPlayerId: player.id,
+      });
+    }
 
     if (gameType === "NightFall") {
       res.redirect(
@@ -145,9 +151,17 @@ app.get("/game-room/:id", async (req, res) => {
       },
     });
 
+    let playersFold;
+
+    if (game.type === GameType.EyeFold) {
+      playersFold = players.filter((player) => player.role === Role.Human || quanbits.has(`${player.id}-${playerId}`));
+    } else {
+      playersFold = players;
+    }
+
     return res.json({
       message: "successful",
-      players,
+      players: playersFold,
       game,
     });
   } catch (error) {

@@ -13,6 +13,21 @@ export const gameWorker = new Worker(
     const { gameId, action } = job.data;
 
     if (action === "start") {
+      const gameAlreadyStarted = await prisma.game.findFirst({
+        where: {
+          id: gameId,
+          startAt: {
+            lte: new Date(),
+          },
+        },
+      });
+
+      if (gameAlreadyStarted) {
+        console.warn(
+          `Game ${gameId} already started.`,
+        );
+        return;
+      }
       const game = await prisma.game.update({
         where: { id: gameId },
         data: { active: false, startAt: new Date() }, // 10 minutes
@@ -33,7 +48,7 @@ export const gameWorker = new Worker(
         where: {
           gameId,
           kicked: false,
-          role: Role.Quanbit
+          role: Role.Quanbit,
         },
       });
 
@@ -75,5 +90,5 @@ export const gameWorker = new Worker(
       io.to(gameId).emit("game:ended");
     }
   },
-  { connection: redis as ConnectionOptions },
+  { connection: redis as ConnectionOptions, concurrency: 5 },
 );

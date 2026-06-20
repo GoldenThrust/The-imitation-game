@@ -92,12 +92,6 @@ export default function EyefoldVote() {
       });
     });
 
-    socket.on("player:left", () => {
-      navigate(
-        `/eyefold/${roomId}/reveal?reason=${encodeURIComponent("player left")}`
-      );
-    });
-
     socket.on("disconnect", reason => {
       console.log("Socket disconnected:", reason);
     });

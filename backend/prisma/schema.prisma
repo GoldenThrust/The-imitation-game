@@ -31,7 +31,7 @@ model Game {
   id       String    @id @default(cuid())
   type     GameType
   active   Boolean   @default(true)
-  startAt  DateTime  @default(now())
+  startAt  DateTime?
   endAt    DateTime?
   duration Int
   winner   Winner?

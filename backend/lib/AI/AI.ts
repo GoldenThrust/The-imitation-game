@@ -1,10 +1,9 @@
 import { FunctionCallingConfigMode, GoogleGenAI } from "@google/genai";
 import { systemsInstruction } from "./systemsInstruction";
 import { aiQueue } from "../bullmq/queue/ai";
-import { responseDelay, shouldRespond } from "../../utils";
+import { responseDelay } from "../../utils";
 import { GameType } from "../../generated/prisma/enums";
 import { eyefoldTools, nightfallTools } from "./gemini/tools";
-import { io } from "../socket";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GOOGLE_API_KEY!,
@@ -25,8 +24,8 @@ export default class Quanbit {
   private roomId: string;
 
   constructor(type: GameType, id: string, roomId: string) {
-    this.gameType = type;
     this.id = id;
+    this.gameType = type;
     this.roomId = roomId;
 
     const tools = type === GameType.NightFall ? nightfallTools : eyefoldTools;
@@ -50,23 +49,20 @@ export default class Quanbit {
   }
 
   async gameStarted() {
-    await new Promise((resolve) =>
-      setTimeout(async () => resolve(true), Math.random() * 2000),
-    );
-
+    const text = "Game Started. Your ID is " + this.id + ".";
     await aiQueue.add(
       "respond",
       {
         gameId: this.roomId,
-        from: this.roomId,
+        from: this.id,
         to: this.id,
-        text: "Game Started. Your ID is " + this.id + ".",
+        text,
         chatId: 0,
         respondSocket: this.roomId as string,
         myId: this.id,
       },
       {
-        delay: Math.random() * 2000,
+        delay: responseDelay(text),
         attempts: 3,
       },
     );
@@ -82,9 +78,10 @@ export default class Quanbit {
     myId?: string;
   }) {
     data["myId"] = this.id;
+    console.log(`Received message for game ${data.gameId}: ${data.from} -> ${data.to}: ${data.text} chatId: ${data.chatId} respondSocket: ${data.respondSocket} myId: ${data.myId}`,
+    );
     await aiQueue.add("respond", data, {
       delay: responseDelay(data.text),
-      attempts: 3,
     });
 
     console.log(
@@ -98,20 +95,18 @@ export default class Quanbit {
    * ourselves) and returns a list of parsed actions instead of raw text.
    */
   async sendMessageToAI(text: string): Promise<QuanbitAction[]> {
-    // console.log(`Sending message to AI: ${text}`);
+    console.log(`Sending message to AI: ${text}`);
 
     const response = await this.chat.sendMessage({
       message: text,
     });
 
-    // console.log(response);
-
     const actions = this.parseFunctionCalls(response);
 
-    // console.log(
-    //   `Parsed ${actions.length} action(s) from AI response:`,
-    //   JSON.stringify(actions),
-    // );
+    console.log(
+      `Parsed ${actions.length} action(s) from AI response:`,
+      JSON.stringify(actions),
+    );
 
     return actions;
   }

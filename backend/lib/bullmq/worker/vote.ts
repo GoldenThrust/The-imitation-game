@@ -81,22 +81,31 @@ export const voteWorker = new Worker(
       });
     }
 
-    const AIinRoom = await prisma.player.findMany({
-      where: {
-        gameId,
-        role: Role.Quanbit,
-      },
+    const totalHumans = await prisma.player.count({
+      where: { gameId: gameId as string, role: Role.Human },
     });
 
-    if (AIinRoom.length <= 0) {
-      gameQueue.add(
-        "game-queue",
-        {
-          gameId,
-          action: "end",
-        }
-      );
+    const remainingHumans = await prisma.player.count({
+      where: { gameId: gameId as string, role: Role.Human, kicked: false },
+    });
+
+    const remainingAIs = await prisma.player.count({
+      where: { gameId: gameId as string, role: Role.Quanbit, kicked: false },
+    });
+
+    const eliminatedHumans = totalHumans - remainingHumans;
+    const eliminationThreshold = Math.ceil(totalHumans * (4 / 5));
+
+    const shouldEndGame =
+      remainingAIs <= 0 ||
+      (totalHumans > 0 && eliminatedHumans >= eliminationThreshold);
+
+    if (shouldEndGame) {
+      gameQueue.add("game-queue", {
+        gameId,
+        action: "end",
+      });
     }
   },
-  { connection: redis as ConnectionOptions },
+  { connection: redis as ConnectionOptions, concurrency: 5 },
 );
