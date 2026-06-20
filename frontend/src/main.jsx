@@ -27,7 +27,7 @@ createRoot(document.getElementById('root')).render(
         <Route path='nightfall'>
           <Route path=":id" element={<NightLobby />} />
           <Route path="room/:id" element={<NightGame />} />
-          <Route path="daybreak/:id" element={<DayBreak />} />
+          <Route path=":id/daybreak" element={<DayBreak />} />
         </Route>
         <Route path="*" element={<NotFound />} />
       </Routes>

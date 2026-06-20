@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import { baseUrl } from '../constants';
 import { io } from 'socket.io-client';
@@ -104,7 +104,6 @@ export default function NightfallRoom() {
     });
 
     socket.on("vote:cast", ({ voterId, targetId }) => {
-      // only reflect this in the selection UI if it's our own vote being confirmed
       if (voterId === myId) {
         setSelected(targetId);
       }
@@ -128,7 +127,7 @@ export default function NightfallRoom() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
-  const send = () => {
+  const send = useCallback(() => {
     const text = message.trim();
     if (!text || !socketRef.current) return;
 
@@ -138,22 +137,17 @@ export default function NightfallRoom() {
       text,
     });
 
-    setMessage('');
-    // no optimistic local append — wait for message:receive so the chat
-    // stays in true server order across all participants
-  };
+    setMessages(prev => [...prev, {msg: text, from: myId}]);
+  }, [message, roomId, myId]);
 
-  const castVote = (playerId) => {
+  const castVote = useCallback((playerId) => {
     if (!socketRef.current) return;
     socketRef.current.emit('vote:cast', {
       roomId,
       voterId: myId,
       targetId: playerId,
     });
-    // don't setSelected here directly — wait for the server's vote:cast
-    // confirmation above so the UI reflects what was actually recorded
-  };
-
+  }, [roomId, myId]);
   const selectedPlayer = players.find(p => p.id === selected);
 
   return (
@@ -183,9 +177,9 @@ export default function NightfallRoom() {
             <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-medium ${
               p.isMe ? 'bg-[#1a1a2e] text-purple-300' : 'bg-[#2a1f10] text-amber-300'
             }`}>
-              {(p.name ?? p.id).slice(0, 2).toUpperCase()}
+              {(p.id).slice(-2).toUpperCase()}
             </div>
-            <span className="text-[10px] text-gray-400">{p.isMe ? 'You' : (p.name ?? p.id)}</span>
+            <span className="text-[10px] text-gray-400">{p.isMe ? 'You' : (p.id)}</span>
           </button>
         ))}
       </div>

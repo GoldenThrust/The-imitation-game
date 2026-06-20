@@ -5,7 +5,7 @@ import { createAdapter } from "@socket.io/redis-streams-adapter";
 import { prisma } from "./prisma.js";
 import { quanbits } from "./AI/AI.js";
 import { gameQueue } from "./bullmq/queue/game.js";
-import { GameType } from "../generated/prisma/enums.js";
+import { GameType, Role } from "../generated/prisma/enums.js";
 
 export const io = new Server(server, {
   adapter: createAdapter(redis),
@@ -15,7 +15,7 @@ export const io = new Server(server, {
   },
 });
 
-const connectedPlayers = new Map();
+export const connectedPlayers = new Map();
 
 function getActiveSocket(id: string) {
   return connectedPlayers.get(id);
@@ -25,7 +25,7 @@ io.on("connection", async (socket) => {
   try {
     const { roomId, playerId } = socket.handshake.query;
 
-    console.log(`Player ${playerId} connected to room ${roomId}`);
+    // console.log(`Player ${playerId} connected to room ${roomId}`);
 
     socket.join(roomId as string);
     socket.join(playerId as string);
@@ -77,7 +77,14 @@ io.on("connection", async (socket) => {
       const targetSocket = connectedPlayers.get(to);
       const senderSocket = connectedPlayers.get(from);
 
-      console.log(`Message from ${from} to ${to}: ${text} (Room ID: ${roomId})`);
+      if (!senderSocket) {
+        console.error(`Sender socket not found for player ${from}`);
+        return;
+      }
+
+      console.log(
+        `Message from ${from} to ${to}: ${text} (Room ID: ${roomId})`,
+      );
 
       const chat = await prisma.chat.create({
         data: {
@@ -99,18 +106,119 @@ io.on("connection", async (socket) => {
         return;
       }
 
-      const quanbit = quanbits.get(to);
+      if (game!.type === GameType.EyeFold) {
+        const quanbit = quanbits.get(to);
 
-      if (!quanbit) return;
+        if (!quanbit) return;
 
-      await quanbit.addMessageToQueue({
-        gameId: roomId as string,
-        from,
-        to,
-        respondSocket: senderSocket,
-        text,
-        chatId: chat.id,
+        await quanbit.addMessageToQueue({
+          gameId: roomId as string,
+          from,
+          to,
+          respondSocket: senderSocket,
+          text,
+          chatId: chat.id,
+        });
+      } else {
+        const AIs = await prisma.player.findMany({
+          where: {
+            gameId: roomId as string,
+            role: Role.Quanbit,
+          },
+        });
+
+        for (const AI of AIs) {
+          const quanbit = quanbits.get(AI.id);
+
+          if (!quanbit) return;
+
+          await quanbit.addMessageToQueue({
+            gameId: roomId as string,
+            from,
+            to: AI.id,
+            respondSocket: roomId as string,
+            text,
+            chatId: chat.id,
+          });
+        }
+      }
+    });
+
+    socket.on("vote:cast", async ({ voterId, targetId }) => {
+      const voterSocket = connectedPlayers.get(voterId);
+
+      if (!voterSocket) {
+        console.error(`Voter socket not found for player ${voterId}`);
+        return;
+      }
+
+      const vote = await prisma.vote.create({
+        data: {
+          voterId,
+          targetId,
+          gameId: roomId as string,
+        },
       });
+
+      io.to(roomId as string).emit("vote:cast", {
+        voterId: vote.voterId,
+        targetId: vote.targetId,
+      });
+
+      const AIs = await prisma.player.findMany({
+        where: {
+          gameId: roomId as string,
+          role: Role.Quanbit,
+        },
+      });
+
+      for (const AI of AIs) {
+        const quanbit = quanbits.get(AI.id);
+
+        if (!quanbit || AI.id === voterId) return;
+
+        await quanbit.addMessageToQueue({
+          gameId: roomId as string,
+          from: voterId,
+          to: AI.id,
+          respondSocket: roomId as string,
+          text:
+            AI.id === targetId
+              ? `Player ${voterId} voted against you`
+              : `Player ${voterId} voted against Player ${targetId}`,
+          chatId: vote.id,
+        });
+      }
+
+      const voteAgainstTarget = await prisma.vote.findMany({
+        where: {
+          targetId: targetId,
+        },
+      });
+
+      const players = await prisma.player.findMany({
+        where: {
+          gameId: roomId as string,
+          kicked: false,
+        },
+      });
+
+      if (voteAgainstTarget.length >= Math.ceil(players.length / 2)) {
+        connectedPlayers.delete(targetId);
+
+        await prisma.player.update({
+          where: {
+            id: targetId,
+          },
+          data: {
+            kicked: true,
+          },
+        });
+
+        io.to(roomId as string).emit("player:kicked", {
+          playerId: targetId,
+        });
+      }
     });
 
     socket.on("disconnect", async () => {

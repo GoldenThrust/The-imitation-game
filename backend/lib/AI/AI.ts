@@ -32,7 +32,7 @@ export default class Quanbit {
     const tools = type === GameType.NightFall ? nightfallTools : eyefoldTools;
 
     this.chat = ai.chats.create({
-      model: "gemini-3.5-flash",
+      model: "gemini-2.5-flash",
       config: {
         systemInstruction:
           type === GameType.NightFall
@@ -50,7 +50,7 @@ export default class Quanbit {
   }
 
   async gameStarted() {
-    const actions = await this.sendMessageToAI("Game Started. Make the first move if you like.");
+    const actions = await this.sendMessageToAI("Game Started. Your ID is " + this.id + ". Make the first move if you like.");
 
     for (const action of actions) {
       if (action.type === "message") {
@@ -73,7 +73,9 @@ export default class Quanbit {
     text: string;
     chatId: string;
     respondSocket: string;
+    myId?: string;
   }) {
+    data["myId"] = this.id;
     await aiQueue.add("respond", data, {
       delay: responseDelay(data.text),
       attempts: 3,
@@ -90,20 +92,20 @@ export default class Quanbit {
    * ourselves) and returns a list of parsed actions instead of raw text.
    */
   async sendMessageToAI(text: string): Promise<QuanbitAction[]> {
-    console.log(`Sending message to AI: ${text}`);
+    // console.log(`Sending message to AI: ${text}`);
 
     const response = await this.chat.sendMessage({
       message: text,
     });
 
-    console.log(response);
+    // console.log(response);
 
     const actions = this.parseFunctionCalls(response);
 
-    console.log(
-      `Parsed ${actions.length} action(s) from AI response:`,
-      JSON.stringify(actions),
-    );
+    // console.log(
+    //   `Parsed ${actions.length} action(s) from AI response:`,
+    //   JSON.stringify(actions),
+    // );
 
     return actions;
   }
