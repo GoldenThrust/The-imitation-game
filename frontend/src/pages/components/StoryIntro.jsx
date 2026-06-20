@@ -75,7 +75,11 @@ export default function StoryIntro({ storyKey, onComplete, onSkip }) {
   }, [lineIdx, story.lines, onComplete]);
 
   useEffect(() => {
-    typeCurrentLine();
+    const run = ()=> {
+      typeCurrentLine();
+    }
+  
+    run();
     return () => {
       clearInterval(typingRef.current);
       clearTimeout(advanceRef.current);

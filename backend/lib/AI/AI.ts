@@ -1,7 +1,7 @@
 import { FunctionCallingConfigMode, GoogleGenAI } from "@google/genai";
 import { systemsInstruction } from "./systemsInstruction";
 import { aiQueue } from "../bullmq/queue/ai";
-import { responseDelay } from "../../utils";
+import { responseDelay, shouldRespond } from "../../utils";
 import { GameType } from "../../generated/prisma/enums";
 import { eyefoldTools, nightfallTools } from "./gemini/tools";
 import { io } from "../socket";
@@ -50,20 +50,26 @@ export default class Quanbit {
   }
 
   async gameStarted() {
-    const actions = await this.sendMessageToAI("Game Started. Your ID is " + this.id + ". Make the first move if you like.");
+    await new Promise((resolve) =>
+      setTimeout(async () => resolve(true), Math.random() * 2000),
+    );
 
-    for (const action of actions) {
-      if (action.type === "message") {
-        io.to(this.roomId).emit("message:receive", {
-          id: 0,
-          text: action.message,
-          from: this.id,
-          to: this.id,
-          createdAt: Date.now(),
-        });
-      }
-    }
-    
+    await aiQueue.add(
+      "respond",
+      {
+        gameId: this.roomId,
+        from: this.roomId,
+        to: this.id,
+        text: "Game Started. Your ID is " + this.id + ".",
+        chatId: 0,
+        respondSocket: this.roomId as string,
+        myId: this.id,
+      },
+      {
+        delay: Math.random() * 2000,
+        attempts: 3,
+      },
+    );
   }
 
   async addMessageToQueue(data: {

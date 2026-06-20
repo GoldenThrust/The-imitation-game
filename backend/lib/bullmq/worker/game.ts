@@ -59,14 +59,14 @@ export const gameWorker = new Worker(
         },
       });
 
-      prisma.player.updateMany({
-        where: {
-          gameId,
-        },
-        data: {
-          kicked: true,
-        },
-      });
+      // prisma.player.updateMany({
+      //   where: {
+      //     gameId,
+      //   },
+      //   data: {
+      //     kicked: true,
+      //   },
+      // });
 
       players.forEach((player) => {
         quanbits.delete(player.id);

@@ -5,6 +5,7 @@ import { prisma } from "../../prisma";
 import { connectedPlayers, io } from "../../socket";
 import redis from "../../redis";
 import { Role } from "../../../generated/prisma/browser";
+import { voteQueue } from "../queue/vote";
 
 export const aiWorker = new Worker(
   "respond",
@@ -25,11 +26,11 @@ export const aiWorker = new Worker(
 
     const actions = await quanbit.sendMessageToAI(newText);
 
-    // console.log(
-    //   `AI actions for game ${gameId}:`,
-    //   JSON.stringify(actions),
-    //   `for message from ${from} to ${to}: ${text}`,
-    // );
+    console.log(
+      `AI actions for game ${gameId}:`,
+      JSON.stringify(actions),
+      `for message from ${from} to ${to}: ${text}`,
+    );
 
     const createdChats = [];
 
@@ -86,76 +87,12 @@ export const aiWorker = new Worker(
       }
 
       if (action.type === "vote") {
-        // adjust to your actual vote persistence model/table
-        const vote = await prisma.vote.create({
-          data: {
-            gameId,
-            voterId: myId,
-            targetId: action.targetPlayerId,
-            reason: action.publicReason,
-          },
-        });
-
-        io.to(respondSocket).emit("vote:cast", {
+        await voteQueue.add("vote-queue", {
+          gameId,
           voterId: myId,
           targetId: action.targetPlayerId,
+          reason: action.publicReason,
         });
-
-        const AIs = await prisma.player.findMany({
-          where: {
-            gameId: gameId as string,
-            role: Role.Quanbit,
-          },
-        });
-
-        for (const AI of AIs) {
-          const quanbit = quanbits.get(AI.id);
-
-          if (!quanbit || AI.id === myId) return;
-
-          await quanbit.addMessageToQueue({
-            gameId: gameId as string,
-            from: myId,
-            to: AI.id,
-            respondSocket: gameId as string,
-            text:
-              AI.id === action.targetPlayerId
-                ? `Player ${myId} voted against you`
-                : `Player ${myId} voted against Player ${action.targetPlayerId}`,
-            chatId: vote.id,
-          });
-        }
-
-        const voteAgainstTarget = await prisma.vote.findMany({
-          where: {
-            targetId: action.targetPlayerId,
-          },
-        });
-
-
-        const players = await prisma.player.findMany({
-          where: {
-            gameId: gameId as string,
-            kicked: false,
-          },
-        });
-
-        if (voteAgainstTarget.length >= Math.ceil(players.length / 2)) {
-          connectedPlayers.delete(action.targetPlayerId);
-
-          await prisma.player.update({
-            where: {
-              id: action.targetPlayerId,
-            },
-            data: {
-              kicked: true,
-            },
-          });
-
-          io.to(gameId as string).emit("player:kicked", {
-            playerId: action.targetPlayerId,
-          });
-        }
       }
     }
 

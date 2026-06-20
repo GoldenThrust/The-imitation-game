@@ -14,12 +14,22 @@ export default function NightfallRoom() {
   const [selected, setSelected] = useState(null);
   const [players, setPlayers] = useState([]);
   const [messages, setMessages] = useState([]);
+  const [toast, setToast] = useState(null);
+  const [eliminated, setEliminated] = useState(false);
+  const [eliminationReason, setEliminationReason] = useState(null);
 
   const scrollRef = useRef(null);
   const socketRef = useRef(null);
   const timerRef = useRef(null);
+  const toastTimeoutRef = useRef(null);
 
   const fmt = s => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  const showToast = useCallback((text) => {
+    clearTimeout(toastTimeoutRef.current);
+    setToast(text);
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
+  }, []);
 
   // Fetch existing players + compute real time remaining from server-authoritative start time
   useEffect(() => {
@@ -42,6 +52,14 @@ export default function NightfallRoom() {
           );
           return [...prev, ...newPlayers];
         });
+
+        // if the server already considers us eliminated (e.g. on a refresh
+        // mid-spectate), restore that state instead of pretending we're live
+        const me = data.players.find(p => p.id === myId);
+        if (me?.eliminated) {
+          setEliminated(true);
+          setEliminationReason(me.eliminationReason ?? 'voted out');
+        }
       } catch (error) {
         navigate("/");
         console.error("Error fetching players:", error);
@@ -93,10 +111,15 @@ export default function NightfallRoom() {
         if (exists) return prev;
         return [...prev, { ...player, isMe: player.id === myId }];
       });
+      showToast(`${player.name ?? player.id} joined the settlement`);
     });
 
     socket.on("player:left", playerId => {
-      setPlayers(prev => prev.filter(p => p.id !== playerId));
+      setPlayers(prev => {
+        const left = prev.find(p => p.id === playerId);
+        if (left) showToast(`${left.name ?? left.id} left the settlement`);
+        return prev.filter(p => p.id !== playerId);
+      });
     });
 
     socket.on("message:receive", msg => {
@@ -106,6 +129,27 @@ export default function NightfallRoom() {
     socket.on("vote:cast", ({ voterId, targetId }) => {
       if (voterId === myId) {
         setSelected(targetId);
+      } else {
+        const voter = players.find(p => p.id === voterId);
+        const target = players.find(p => p.id === targetId);
+        showToast(`${voter?.name ?? voterId} voted against ${target?.name ?? targetId}`);
+      }
+    });
+
+    // Kicked players stay in the room as a spectator instead of being
+    // routed away — they keep watching the live chat and vote tally,
+    // but lose the ability to speak or vote themselves.
+    socket.on("player:kicked", ({ playerId, reason }) => {
+      if (playerId === myId) {
+        setEliminated(true);
+        setEliminationReason(reason ?? 'voted out');
+        setSelected(null);
+      } else {
+        setPlayers(prev => {
+          const kicked = prev.find(p => p.id === playerId);
+          if (kicked) showToast(`${kicked.name ?? kicked.id} was eliminated`);
+          return prev.map(p => p.id === playerId ? { ...p, eliminated: true } : p);
+        });
       }
     });
 
@@ -120,38 +164,49 @@ export default function NightfallRoom() {
     return () => {
       socket.removeAllListeners();
       socket.disconnect();
+      clearTimeout(toastTimeoutRef.current);
     };
-  }, [roomId, myId, navigate]);
+  }, [roomId, myId, navigate, showToast]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
   const send = useCallback(() => {
+    if (eliminated) return; // guard against any path that could still call this
     const text = message.trim();
     if (!text || !socketRef.current) return;
 
     socketRef.current.emit('message:send', {
       roomId,
       from: myId,
+      to: roomId,
       text,
     });
 
-    setMessages(prev => [...prev, {msg: text, from: myId}]);
-  }, [message, roomId, myId]);
+    setMessage('');
+  }, [message, roomId, myId, eliminated]);
 
   const castVote = useCallback((playerId) => {
+    if (eliminated) return; // eliminated players are observers only
     if (!socketRef.current) return;
     socketRef.current.emit('vote:cast', {
       roomId,
       voterId: myId,
       targetId: playerId,
     });
-  }, [roomId, myId]);
+  }, [roomId, myId, eliminated]);
+
   const selectedPlayer = players.find(p => p.id === selected);
 
   return (
-    <div className="min-h-screen bg-black flex flex-col">
+    <div className="min-h-screen bg-black flex flex-col relative">
+      {toast && (
+        <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 bg-[#1c1c20] border border-[#2a2a30] text-gray-200 text-xs px-4 py-2 rounded-full shadow-lg">
+          {toast}
+        </div>
+      )}
+
       <nav className="flex items-center justify-between px-5 py-3 border-b border-[#1c1c20]">
         <span className="text-gray-50 font-medium text-sm">
           <span className="text-amber-400">Nightfall</span>
@@ -164,24 +219,47 @@ export default function NightfallRoom() {
         </div>
       </nav>
 
+      {eliminated && (
+        <div className="bg-[#2a1414] border-b border-[#4a1f1f] px-4 py-2.5 flex items-center gap-2">
+          <i className="ti ti-ghost-2 text-red-300 text-base shrink-0" />
+          <p className="text-xs text-red-200 leading-snug">
+            <span className="font-medium text-red-100">You were eliminated</span> ({eliminationReason}). You can watch the rest of the round, but you can no longer vote or chat.
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-2 px-4 py-3 overflow-x-auto border-b border-[#1c1c20]">
-        {players.map(p => (
-          <button
-            key={p.id}
-            onClick={() => !p.isMe && castVote(p.id)}
-            disabled={p.isMe}
-            className={`flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg shrink-0 ${
-              selected === p.id ? 'bg-[#2a1410] border border-red-700' : 'border border-transparent'
-            } ${!p.isMe && 'hover:bg-[#15151a]'}`}
-          >
-            <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-medium ${
-              p.isMe ? 'bg-[#1a1a2e] text-purple-300' : 'bg-[#2a1f10] text-amber-300'
-            }`}>
-              {(p.id).slice(-2).toUpperCase()}
-            </div>
-            <span className="text-[10px] text-gray-400">{p.isMe ? 'You' : (p.id)}</span>
-          </button>
-        ))}
+        {players.map(p => {
+          const isSelf = p.isMe;
+          const disabled = isSelf || eliminated || p.eliminated;
+          return (
+            <button
+              key={p.id}
+              onClick={() => !disabled && castVote(p.id)}
+              disabled={disabled}
+              className={`relative flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg shrink-0 w-14 ${
+                selected === p.id ? 'bg-[#2a1410] border border-red-700' : 'border border-transparent'
+              } ${!disabled && 'hover:bg-[#15151a]'} ${(eliminated || p.eliminated) && !isSelf ? 'opacity-40' : ''} ${isSelf ? 'opacity-45' : ''}`}
+            >
+              {(isSelf && eliminated) && (
+                <span className="absolute -top-0.5 right-1 text-red-400 text-[11px]">
+                  <i className="ti ti-skull" />
+                </span>
+              )}
+              {(!isSelf && p.eliminated) && (
+                <span className="absolute -top-0.5 right-1 text-red-400 text-[11px]">
+                  <i className="ti ti-skull" />
+                </span>
+              )}
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-medium ${
+                isSelf ? 'bg-[#1c1c20] text-gray-500' : 'bg-[#2a1f10] text-amber-300'
+              }`}>
+                {(p.name ?? p.id).slice(-2).toUpperCase()}
+              </div>
+              <span className="text-[10px] text-gray-400">{isSelf ? 'You' : (p.name ?? p.id)}</span>
+            </button>
+          );
+        })}
       </div>
 
       <div ref={scrollRef} className="flex-1 p-4 flex flex-col gap-2 overflow-y-auto">
@@ -206,20 +284,34 @@ export default function NightfallRoom() {
       </div>
 
       <div className="px-4 py-2 text-[11px] text-gray-600 border-t border-[#1c1c20]">
-        {selected
-          ? `Vote cast against ${selectedPlayer?.name ?? selected}. Tap another to change.`
-          : 'Tap a player above to vote against them'}
+        {eliminated
+          ? 'You are spectating. Voting and chat are disabled.'
+          : selected
+            ? `Vote cast against ${selectedPlayer?.name ?? selected}. Tap another to change.`
+            : 'Tap a player above to vote against them'}
       </div>
 
       <div className="p-3 border-t border-[#1c1c20] flex gap-2">
-        <input
-          className="flex-1 bg-[#111114] border border-[#232328] rounded-lg px-3 py-2.5 text-sm text-gray-200 outline-none focus:border-purple-600"
-          value={message}
-          onChange={e => setMessage(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && send()}
-          placeholder="Speak to the settlement..."
-        />
-        <button onClick={send} className="bg-purple-600 text-white px-4 rounded-lg hover:bg-purple-700">
+        {eliminated ? (
+          <div className="flex-1 bg-[#0e0e10] border border-[#1c1c20] rounded-lg px-3 py-2.5 text-sm text-gray-600">
+            You can no longer speak in this settlement
+          </div>
+        ) : (
+          <input
+            className="flex-1 bg-[#111114] border border-[#232328] rounded-lg px-3 py-2.5 text-sm text-gray-200 outline-none focus:border-purple-600"
+            value={message}
+            onChange={e => setMessage(e.target.value)}
+            onKeyDown={e => e.key === 'Enter' && send()}
+            placeholder="Speak to the settlement..."
+          />
+        )}
+        <button
+          onClick={send}
+          disabled={eliminated}
+          className={`px-4 rounded-lg ${
+            eliminated ? 'bg-[#1c1c20] text-gray-600 cursor-not-allowed' : 'bg-purple-600 text-white hover:bg-purple-700'
+          }`}
+        >
           →
         </button>
       </div>
