@@ -162,7 +162,7 @@ export default function EyefoldRoom() {
               <div className="w-8 h-8 rounded-full bg-[#1a1a2e] text-purple-300 flex items-center justify-center text-xs font-medium">
                 {p.id.slice(-2).toUpperCase()}
               </div>
-              <span className="text-sm font-medium text-gray-200">Player {p.id.reverse()}</span>
+              <span className="text-sm font-medium text-gray-200">Player {p.id}</span>
             </div>
             <div className="flex-1 p-3 flex flex-col gap-1.5 overflow-y-auto min-h-48">
               {(chats[p.id] || []).map((m, i) => (
@@ -178,7 +178,7 @@ export default function EyefoldRoom() {
             <div className="p-2 border-t border-[#1c1c20] flex gap-2">
               <input
                 className="flex-1 bg-[#111114] border border-[#232328] rounded-lg px-3 py-2 text-xs text-gray-200 outline-none focus:border-purple-600"
-                value={drafts[p.id.reverse()] || ''}
+                value={drafts[p.id] || ''}
                 onChange={e => setMessage(p.id, e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && send(p.id)}
                 placeholder={`Message Player ${p.id}...`}

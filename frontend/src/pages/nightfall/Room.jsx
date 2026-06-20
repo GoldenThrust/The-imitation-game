@@ -254,9 +254,9 @@ export default function NightfallRoom() {
               <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-medium ${
                 isSelf ? 'bg-[#1c1c20] text-gray-500' : 'bg-[#2a1f10] text-amber-300'
               }`}>
-                {(p.name ?? p.id).slice(-2).toUpperCase()}
+                {(p.id).slice(-2).toUpperCase()}
               </div>
-              <span className="text-[10px] text-gray-400">{isSelf ? 'You' : (p.name ?? p.id)}</span>
+              <span className="text-[10px] text-gray-400">{isSelf ? 'You' : p.id}</span>
             </button>
           );
         })}

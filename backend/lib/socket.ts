@@ -152,7 +152,7 @@ io.on("connection", async (socket) => {
     });
 
     socket.on("disconnect", async () => {
-      // connectedPlayers.delete(playerId);
+      connectedPlayers.delete(playerId);
 
       try {
         setTimeout(async () => {
