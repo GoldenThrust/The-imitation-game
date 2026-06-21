@@ -102,7 +102,7 @@ export const aiWorker = new Worker(
           await voteQueue.add("vote-queue", {
             gameId,
             voterId: myId,
-            castVote: action.castVote,
+            // castVote: action.castVote,
             targetId: action.targetPlayerId,
             reason: action.publicReason,
           });

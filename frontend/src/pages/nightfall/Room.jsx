@@ -54,7 +54,7 @@ export default function NightfallRoom() {
         });
 
         const me = data.players.find(p => p.id === myId);
-        if (me?.eliminated) {
+        if (me?.kicked) {
           setEliminated(true);
           setEliminationReason(me.eliminationReason ?? 'voted out');
         }
@@ -78,14 +78,14 @@ export default function NightfallRoom() {
       setTimeLeft(s => {
         if (s <= 1) {
           clearInterval(timerRef.current);
-          navigate(`/nightfall/${roomId}/daybreak`);
+          navigate(`/nightfall/${roomId}/daybreak?id=${myId}`);
           return 0;
         }
         return s - 1;
       });
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [roomId, navigate]);
+  }, [roomId, navigate, myId]);
 
   // Socket connection
   useEffect(() => {
@@ -154,7 +154,7 @@ export default function NightfallRoom() {
     });
 
     socket.on("game:ended", () => {
-      navigate(`/nightfall/${roomId}/daybreak`);
+      navigate(`/nightfall/${roomId}/daybreak?id=${myId}`);
     });
 
     socket.on("disconnect", reason => {
@@ -166,7 +166,7 @@ export default function NightfallRoom() {
       socket.disconnect();
       clearTimeout(toastTimeoutRef.current);
     };
-  }, [roomId, myId, navigate, showToast]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [roomId, myId, navigate, showToast]);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -248,7 +248,7 @@ export default function NightfallRoom() {
                   <i className="ti ti-skull" />
                 </span>
               )}
-              {(!isSelf && p.eliminated) && (
+              {(!isSelf && p.kicked) && (
                 <span className="absolute -top-0.5 right-1 text-red-400 text-[11px]">
                   <i className="ti ti-skull" />
                 </span>
