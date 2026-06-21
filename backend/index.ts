@@ -9,7 +9,13 @@ import { gameQueue } from "./lib/bullmq/queue/game";
 import { quanbits } from "./lib/AI/AI";
 import path from "path";
 
-const PORT = process.env.PORT || 8080;
+import { fileURLToPath } from "url";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+
+const PORT = process.env.PORT || 80;
 const app = express();
 export const server = createServer(app);
 
@@ -17,10 +23,10 @@ app.use(cors({ origin: `${process.env.CLIENT_URL}`, credentials: true }));
 
 
 
-app.use(express.static(path.join(__dirname, "dist")));
+app.use(express.static(path.join(__dirname, "client")));
 
 app.get(/(.*)/, (req, res) => {
-  res.sendFile(path.join(__dirname, "dist", "index.html"));
+  res.sendFile(path.join(__dirname, "client", "index.html"));
 });
 
 app.get("/", (_, res) => {
