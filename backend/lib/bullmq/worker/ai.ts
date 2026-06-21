@@ -21,9 +21,9 @@ export const aiWorker = new Worker(
 
       const quanbit = quanbits.get(myId);
 
-      console.log(
-        `Retrieved Quanbit for game ${gameId}: ${quanbit ? "found" : "not found"} for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
-      );
+      // console.log(
+      //   `Retrieved Quanbit for game ${gameId}: ${quanbit ? "found" : "not found"} for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
+      // );
 
       if (!quanbit) {
         console.warn(
@@ -38,11 +38,11 @@ export const aiWorker = new Worker(
 
       const actions = await quanbit.sendMessageToAI(newText);
 
-      console.log(
-        `AI actions for game ${gameId}:`,
-        JSON.stringify(actions),
-        `for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
-      );
+      // console.log(
+      //   `AI actions for game ${gameId}:`,
+      //   JSON.stringify(actions),
+      //   `for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
+      // );
 
       const createdChats = [];
 

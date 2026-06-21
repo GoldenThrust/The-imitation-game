@@ -129,7 +129,7 @@ export default function DayBreak() {
           </button>
           <a
             href={`${baseUrl}/api/room?type=nightfall`}
-            className="flex-1 bg-amber-700 text-white text-sm py-2 rounded-lg hover:bg-amber-800"
+            className="flex-1 bg-amber-700 text-white text-sm py-2 rounded-lg hover:bg-amber-800 text-center"
           >
             Play again →
           </a>

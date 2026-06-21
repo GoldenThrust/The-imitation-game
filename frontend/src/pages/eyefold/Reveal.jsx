@@ -58,7 +58,7 @@ export default function EyefoldReveal() {
           <button onClick={() => navigate('/')} className="flex-1 border border-[#232328] text-gray-300 text-sm py-2 rounded-lg hover:bg-[#111114]">
             Back to lobby
           </button>
-          <a href={`${baseUrl}/api/room?type=eyefold`} className="flex-1 bg-purple-600 text-white text-sm py-2 rounded-lg hover:bg-purple-700">
+          <a href={`${baseUrl}/api/room?type=eyefold`} className="flex-1 bg-purple-600 text-white text-sm py-2 rounded-lg hover:bg-purple-700 text-center">
             Train again →
           </a>
         </div>
