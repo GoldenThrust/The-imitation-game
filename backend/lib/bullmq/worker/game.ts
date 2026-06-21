@@ -12,7 +12,7 @@ export const gameWorker = new Worker(
   async (job) => {
     try {
       const { gameId, action } = job.data;
-  
+
       if (action === "start") {
         const gameAlreadyStarted = await prisma.game.findFirst({
           where: {
@@ -22,18 +22,16 @@ export const gameWorker = new Worker(
             },
           },
         });
-  
+
         if (gameAlreadyStarted) {
-          console.warn(
-            `Game ${gameId} already started.`,
-          );
+          console.warn(`Game ${gameId} already started.`);
           return;
         }
         const game = await prisma.game.update({
           where: { id: gameId },
           data: { active: false, startAt: new Date() }, // 10 minutes
         });
-  
+
         gameQueue.add(
           "game-queue",
           {
@@ -44,7 +42,7 @@ export const gameWorker = new Worker(
             delay: game.duration! * 1000,
           },
         );
-  
+
         const players = await prisma.player.findMany({
           where: {
             gameId,
@@ -52,29 +50,43 @@ export const gameWorker = new Worker(
             role: Role.Quanbit,
           },
         });
-  
-        players.forEach((player) => {
+
+        const quanbitsPlayers = players.filter(
+          (player) => player.role === Role.Quanbit,
+        );
+
+        const humanPlayers = players.filter(
+          (player) => player.role === Role.Human,
+        );
+
+        quanbitsPlayers.forEach((player) => {
           const quanbit = quanbits.get(player.id);
-  
-          if (quanbit) {
-            quanbit.gameStarted();
+
+          quanbit?.gameStarted();
+          if (game.type === "EyeFold") {
+            humanPlayers.forEach((human) => {
+              const quanbit = quanbits.get(`${player.id}-${human.id}`);
+
+              quanbit?.gameStarted();
+            });
           }
         });
+
         io.to(gameId).emit("game:started");
       }
-  
+
       if (action === "end") {
         await prisma.game.update({
           where: { id: gameId },
           data: { active: false, endAt: new Date() },
         });
-  
+
         const players = await prisma.player.findMany({
           where: {
             gameId,
           },
         });
-  
+
         // prisma.player.updateMany({
         //   where: {
         //     gameId,
@@ -83,11 +95,11 @@ export const gameWorker = new Worker(
         //     kicked: true,
         //   },
         // });
-  
+
         players.forEach((player) => {
           quanbits.delete(player.id);
         });
-  
+
         io.to(gameId).emit("game:ended");
       }
     } catch (error) {
