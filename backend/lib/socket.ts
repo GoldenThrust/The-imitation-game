@@ -113,26 +113,41 @@ io.on("connection", async (socket) => {
         createdAt: chat.createdAt,
       });
 
-      const AIs = await prisma.player.findMany({
-        where: {
-          gameId: roomId as string,
-          role: Role.Quanbit,
-        },
-      });
-
-      for (const AI of AIs) {
-        const quanbit = quanbits.get(AI.id);
+      if (game!.type === GameType.EyeFold) {
+        const quanbit = quanbits.get(to);
 
         if (!quanbit) return;
 
         await quanbit.addMessageToQueue({
           gameId: roomId as string,
           from,
-          to: AI.id,
-          respondSocket: game?.type === GameType.EyeFold ? to : roomId as string,
+          to,
+          respondSocket: from,
           text,
           chatId: chat.id,
         });
+      } else {
+        const AIs = await prisma.player.findMany({
+          where: {
+            gameId: roomId as string,
+            role: Role.Quanbit,
+          },
+        });
+
+        for (const AI of AIs) {
+          const quanbit = quanbits.get(AI.id);
+
+          if (!quanbit) return;
+
+          await quanbit.addMessageToQueue({
+            gameId: roomId as string,
+            from,
+            to: AI.id,
+            respondSocket: roomId as string,
+            text,
+            chatId: chat.id,
+          });
+        }
       }
     });
 

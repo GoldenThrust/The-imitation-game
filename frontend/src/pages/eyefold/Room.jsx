@@ -15,10 +15,25 @@ export default function EyefoldRoom() {
   const { id: roomId } = useParams();
   const socketRef = useRef(null);
   const myId = searchParams.get("id");
-  const scrollRef = useRef(null);
 
+  // one scrollable ref PER other player, keyed by their id, instead of a
+  // single ref on the whole two-column grid
+  const scrollRefs = useRef({});
+
+  // stable function — does NOT touch scrollRefs.current itself during render.
+  // It only returns a ref-callback; React invokes that callback during
+  // commit (not render), which is when scrollRefs.current[playerId] = el
+  // actually happens.
+  const getScrollRef = useCallback((playerId) => (el) => {
+    scrollRefs.current[playerId] = el;
+  }, []);
+
+  // scroll only the thread that actually received a new message
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+    Object.keys(chats).forEach(playerId => {
+      const el = scrollRefs.current[playerId];
+      el?.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    });
   }, [chats]);
 
   useEffect(() => {
@@ -77,7 +92,6 @@ export default function EyefoldRoom() {
     const text = (drafts[playerId] || '').trim();
     if (!text) return;
 
-    // optimistic local append
     setChats(prev => ({
       ...prev,
       [playerId]: [...(prev[playerId] || []), { from: 'me', text }],
@@ -103,10 +117,6 @@ export default function EyefoldRoom() {
 
     socketRef.current = socket;
 
-    // socket.on("connect", () => {
-    //   console.log("Socket connected:", socket.id);
-    // });
-
     socket.on("player:joined", player => {
       if (!player?.id) return;
       setPlayers(prev => {
@@ -125,8 +135,6 @@ export default function EyefoldRoom() {
     });
 
     socket.on("player:left", () => {
-      // console.log("player left");
-
       navigate(
         `/eyefold/${roomId}/reveal?reason=${encodeURIComponent("player left")}`
       );
@@ -145,8 +153,8 @@ export default function EyefoldRoom() {
   const otherPlayers = players.filter(p => p.id !== myId);
 
   return (
-    <div className="min-h-screen bg-black flex flex-col">
-      <nav className="flex items-center justify-between px-5 py-3 border-b border-[#1c1c20]">
+    <div className="h-screen bg-black flex flex-col overflow-hidden">
+      <nav className="flex items-center justify-between px-5 py-3 border-b border-[#1c1c20] shrink-0">
         <span className="text-gray-50 font-medium text-sm">
           The <span className="text-purple-400">Eyefold</span>
         </span>
@@ -157,19 +165,27 @@ export default function EyefoldRoom() {
           </span>
         </div>
       </nav>
-      <div className="px-4 py-2.5 bg-[#0e0e10] border-b border-[#1c1c20] text-xs text-gray-500">
+
+      <div className="px-4 py-2.5 bg-[#0e0e10] border-b border-[#1c1c20] text-xs text-gray-500 shrink-0">
         Chat with both trainees. Spot the synthetic before time runs out.
       </div>
-      <div className="flex-1 grid grid-cols-2 divide-x divide-[#1c1c20]" ref={scrollRef}>
+
+      <div className="flex-1 grid grid-cols-2 divide-x divide-[#1c1c20] min-h-0">
         {otherPlayers.map(p => (
-          <div key={p.id} className="flex flex-col h-full overflow-y-auto">
-            <div className="px-4 py-3 border-b border-[#1c1c20] flex items-center gap-2">
+          <div key={p.id} className="flex flex-col min-h-0">
+            {/* fixed header — does not scroll */}
+            <div className="bg-[#111114] border-b border-[#1c1c20] px-4 py-3 flex items-center gap-2 shrink-0">
               <div className="w-8 h-8 rounded-full bg-[#1a1a2e] text-purple-300 flex items-center justify-center text-xs font-medium">
                 {p.id.slice(-2).toUpperCase()}
               </div>
               <span className="text-sm font-medium text-gray-200">Player {p.id}</span>
             </div>
-            <div className="flex-1 p-3 flex flex-col gap-1.5 overflow-y-auto min-h-48">
+
+            {/* scrollable message body — separate element, separate ref */}
+            <div
+              ref={getScrollRef(p.id)}
+              className="flex-1 min-h-0 p-3 flex flex-col gap-1.5 overflow-y-auto"
+            >
               {(chats[p.id] || []).map((m, i) => (
                 <div
                   key={i}
@@ -180,7 +196,9 @@ export default function EyefoldRoom() {
                 </div>
               ))}
             </div>
-            <div className="p-2 border-t border-[#1c1c20] flex gap-2">
+
+            {/* fixed input row — does not scroll */}
+            <div className="p-2 border-t border-[#1c1c20] flex gap-2 shrink-0">
               <input
                 className="flex-1 bg-[#111114] border border-[#232328] rounded-lg px-3 py-2 text-xs text-gray-200 outline-none focus:border-purple-600"
                 value={drafts[p.id] || ''}
@@ -195,14 +213,6 @@ export default function EyefoldRoom() {
           </div>
         ))}
       </div>
-      {/* <div className="px-4 py-3 border-t border-[#1c1c20] flex justify-end">
-        <button
-          onClick={() => navigate(`/eyefold/${roomId}/vote`)}
-          className="bg-red-600 text-white text-sm px-4 py-2 rounded-lg hover:bg-red-700"
-        >
-          End chat & vote →
-        </button>
-      </div> */}
     </div>
   );
 }

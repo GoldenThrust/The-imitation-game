@@ -41,7 +41,7 @@ export default class Quanbit {
           type === GameType.NightFall
             ? systemsInstruction.NightFall
             : systemsInstruction.EyeFold,
-        temperature: 0.9,
+        temperature: 1,
         tools: [{ functionDeclarations: tools }],
         // force a tool call every turn so we never get unstructured prose
         // we'd have to fall back on
