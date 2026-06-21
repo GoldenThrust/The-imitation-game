@@ -62,7 +62,10 @@ app.get("/api/room", async (req, res) => {
 
     const humanPlayers = players.filter((player) => player.role === Role.Human);
 
-    if (game.type === GameType.EyeFold && humanPlayers.length >= 2 || (game.type === GameType.NightFall && players.length >= 10)) {
+    if (
+      (game.type === GameType.EyeFold && humanPlayers.length >= 2) ||
+      (game.type === GameType.NightFall && players.length >= 10)
+    ) {
       return res.redirect(
         `${process.env.CLIENT_URL}/eyefold/${game.id}?error=game is full, try joining another one`,
       );
@@ -93,8 +96,8 @@ app.get("/api/room", async (req, res) => {
           action: "start",
         },
         {
-          delay: gameType === GameType.NightFall ? 10000 : 2000
-        }
+          delay: gameType === GameType.NightFall ? 10000 : 2000,
+        },
       );
     }
 
@@ -198,6 +201,35 @@ app.get("/api/game-room/:id/vote", async (req, res) => {
       message: "successful",
       players,
       game,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.json({
+      message: "Error finding game",
+    });
+  }
+});
+
+app.get("/api/game-room/:id/daybreak", async (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const game = await prisma.game.findUnique({
+      where: {
+        id: id,
+      },
+    });
+
+    const players = await prisma.player.findMany({
+      where: {
+        gameId: id,
+      },
+    });
+
+    return res.json({
+      message: "successful",
+      players,
+      game
     });
   } catch (error) {
     console.error(error);

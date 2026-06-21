@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router';
+import { useParams, useNavigate } from 'react-router';
 import { baseUrl } from '../constants';
 
 export default function DayBreak() {
-  const [searchParams] = useSearchParams();
   const { id: roomId } = useParams();
-  const myId = searchParams.get("id");
   const navigate = useNavigate();
 
   const [loaded, setLoaded] = useState(false);
@@ -19,7 +17,7 @@ export default function DayBreak() {
     async function fetchPlayers() {
       try {
         const response = await fetch(
-          `${baseUrl}/api/game-room/${roomId}?id=${myId}`
+          `${baseUrl}/api/game-room/${roomId}/daybreak`
         );
 
         const data = await response.json();
@@ -43,7 +41,7 @@ export default function DayBreak() {
       setPlayers([]);
       setLoaded(false);
     };
-  }, [roomId, myId, navigate]);
+  }, [roomId, navigate]);
 
   useEffect(() => {
     if (!loaded) return;

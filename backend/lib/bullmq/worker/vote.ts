@@ -129,7 +129,7 @@ export const voteWorker = new Worker(
       });
 
       const eliminatedHumans = totalHumans - remainingHumans;
-      const eliminationThreshold = Math.ceil(totalHumans * (1 / 5));
+      const eliminationThreshold = Math.ceil(totalHumans * (4 / 5));
 
       const shouldEndGame =
         remainingAIs <= 0 || totalHumans <= 0 ||
