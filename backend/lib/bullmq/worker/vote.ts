@@ -73,6 +73,7 @@ export const voteWorker = new Worker(
               ? `Player ${voterId} voted against you`
               : `Player ${voterId} voted against Player ${targetId}`,
           chatId: vote.id,
+          system: true
         });
       }
 

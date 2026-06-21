@@ -32,7 +32,7 @@ export default class Quanbit {
     const tools = type === GameType.NightFall ? nightfallTools : eyefoldTools;
 
     this.chat = ai.chats.create({
-      model: "gemini-2.5-flash",
+      model: "gemini-3.5-flash",
       config: {
         systemInstruction:
           type === GameType.NightFall
@@ -77,6 +77,7 @@ export default class Quanbit {
     chatId: string;
     respondSocket: string;
     myId?: string;
+    system?: boolean;
   }) {
     data["myId"] = this.id;
     console.log(`Received message for game ${data.gameId}: ${data.from} -> ${data.to}: ${data.text} chatId: ${data.chatId} respondSocket: ${data.respondSocket} myId: ${data.myId}`,

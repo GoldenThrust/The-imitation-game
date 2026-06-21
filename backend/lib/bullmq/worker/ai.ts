@@ -12,10 +12,10 @@ export const aiWorker = new Worker(
     try {
       console.log("Processing AI job with data:", job.data);
 
-      const { gameId, from, to, respondSocket, text, myId } = job.data;
+      const { gameId, from, to, respondSocket, text, myId, system } = job.data;
 
       const newText =
-        from === to ? `System: ${text}` : `Player ${from}: ${text}`;
+        system === true || from === to ? `System: ${text}` : `Player ${from}: ${text}`;
 
       const quanbit = quanbits.get(myId);
 
