@@ -109,7 +109,7 @@ export default function NightfallRoom() {
         if (exists) return prev;
         return [...prev, { ...player, isMe: player.id === myId }];
       });
-      showToast(`${player.name ?? player.id} joined the settlement`);
+      // showToast(`${player.name ?? player.id} joined the settlement`);
     });
 
     socket.on("player:left", playerId => {

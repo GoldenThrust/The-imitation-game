@@ -83,6 +83,20 @@ io.on("connection", async (socket) => {
         console.error(`Sender socket not found for player ${from}`);
         return;
       }
+
+      const playerKicked = await prisma.player.findUnique({
+        where: {
+          id: from,
+          kicked: true,
+        },
+      });
+
+      if (playerKicked) {
+        console.error(`Player ${from} is kicked and cannot send messages.`);
+        return;
+      }
+
+
       const chat = await prisma.chat.create({
         data: {
           text,

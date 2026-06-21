@@ -14,6 +14,18 @@ export const voteWorker = new Worker(
     try {
       const { gameId, voterId, targetId } = job.data;
 
+      const playerKicked = await prisma.player.findUnique({
+        where: {
+          id: voterId,
+          kicked: true,
+        },
+      });
+
+      if (playerKicked) {
+        console.error(`Player ${voterId} is kicked and cannot vote.`);
+        return;
+      }
+
       const vote = await prisma.vote.upsert({
         where: {
           gameId_voterId: {
@@ -31,10 +43,6 @@ export const voteWorker = new Worker(
         },
       });
 
-      console.log(
-        `Processing vote job for game ${gameId}: voter ${voterId} voted against target ${targetId}`,
-      );
-      
       io.to(gameId as string).emit("vote:cast", {
         voterId: vote.voterId,
         targetId: vote.targetId,
@@ -47,10 +55,13 @@ export const voteWorker = new Worker(
         },
       });
 
+      console.log(
+        `Processing vote job for game ${gameId}: voter ${voterId} voted against target ${targetId}`,
+      );
       for (const AI of AIs) {
         const quanbit = quanbits.get(AI.id);
 
-        if (!quanbit || AI.id === voterId) return;
+        if (!quanbit || AI.id === voterId) continue;
 
         await quanbit.addMessageToQueue({
           gameId: gameId as string,
@@ -78,10 +89,17 @@ export const voteWorker = new Worker(
         },
       });
 
+      let kickedPlayer;
+
+      console.log(
+        voteAgainstTarget.length,
+        players.length,
+        voteAgainstTarget.length >= Math.ceil(players.length / 2),
+      );
+
       if (voteAgainstTarget.length >= Math.ceil(players.length / 2)) {
         connectedPlayers.delete(targetId);
-
-        await prisma.player.update({
+        kickedPlayer = await prisma.player.update({
           where: {
             id: targetId,
           },
@@ -89,6 +107,8 @@ export const voteWorker = new Worker(
             kicked: true,
           },
         });
+
+        quanbits.delete(targetId);
 
         io.to(gameId as string).emit("player:kicked", {
           playerId: targetId,
@@ -112,7 +132,8 @@ export const voteWorker = new Worker(
 
       const shouldEndGame =
         remainingAIs <= 0 ||
-        (totalHumans > 0 && eliminatedHumans >= eliminationThreshold);
+        (totalHumans > 0 && eliminatedHumans >= eliminationThreshold) ||
+        kickedPlayer?.role === Role.Quanbit;
 
       if (shouldEndGame) {
         gameQueue.add("game-queue", {

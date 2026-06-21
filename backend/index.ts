@@ -39,13 +39,6 @@ app.get("/room", async (req, res) => {
           duration: gameType === GameType.NightFall ? 60 * 10 : 60 * 5, // 10 minutes for NightFall, 5 minutes for EyeFold
         },
       });
-
-      if (gameType === GameType.NightFall) {
-        await joinQueue.add("join", {
-          gameId: game.id,
-          isAI: true,
-        });
-      }
     }
 
     const players = await prisma.player.findMany({
@@ -54,6 +47,14 @@ app.get("/room", async (req, res) => {
         kicked: false,
       },
     });
+
+
+    if (gameType === GameType.NightFall && players.length % 3 === 0) {
+      await joinQueue.add("join", {
+        gameId: game.id,
+        isAI: true,
+      });
+    }
 
     const humanPlayers = players.filter((player) => player.role === Role.Human);
 
@@ -108,7 +109,7 @@ app.get("/room", async (req, res) => {
       });
     }
 
-    if (gameType === GameType.NightFall) {
+    if (gameType === "NightFall") {
       res.redirect(
         `${process.env.CLIENT_URL}/nightfall/${game.id}?id=${player.id}`,
       );
@@ -154,11 +155,7 @@ app.get("/game-room/:id", async (req, res) => {
     let playersFold;
 
     if (game.type === GameType.EyeFold) {
-      playersFold = players.filter(
-        (player) =>
-          player.role === Role.Human ||
-          quanbits.has(`${player.id}-${playerId}`),
-      );
+      playersFold = players.filter((player) => player.role === Role.Human || quanbits.has(`${player.id}-${playerId}`));
     } else {
       playersFold = players;
     }
