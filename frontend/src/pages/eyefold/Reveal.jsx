@@ -1,4 +1,5 @@
 import { useNavigate, useLocation } from 'react-router';
+import { baseUrl } from '../constants';
 
 export default function EyefoldReveal() {
   const navigate = useNavigate();
@@ -57,7 +58,7 @@ export default function EyefoldReveal() {
           <button onClick={() => navigate('/')} className="flex-1 border border-[#232328] text-gray-300 text-sm py-2 rounded-lg hover:bg-[#111114]">
             Back to lobby
           </button>
-          <a href="http://localhost:3000/room?type=eyefold" className="flex-1 bg-purple-600 text-white text-sm py-2 rounded-lg hover:bg-purple-700">
+          <a href={`${baseUrl}/api/room?type=eyefold`} className="flex-1 bg-purple-600 text-white text-sm py-2 rounded-lg hover:bg-purple-700">
             Train again →
           </a>
         </div>

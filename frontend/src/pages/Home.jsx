@@ -1,4 +1,5 @@
 import StoryIntro from "./components/StoryIntro";
+import { baseUrl } from "./constants";
 
 export default function Home() {
   return (
@@ -24,7 +25,7 @@ export default function Home() {
 
         <nav className="relative z-10 grid grid-cols-2 gap-3">
           <a
-            href="http://localhost:3000/room?type=eyefold"
+            href={`${baseUrl}/api/room?type=eyefold`}
             className="bg-[#111114] border border-[#232328] hover:border-purple-700 hover:bg-[#15151a] rounded-xl p-4 text-left transition-colors"
           >
             <div className="w-9 h-9 rounded-lg bg-[#1a1a2e] text-purple-300 flex items-center justify-center  mb-2.5">
@@ -40,7 +41,7 @@ export default function Home() {
           </a>
 
           <a
-            href="http://localhost:3000/room?type=nightfall"
+            href={`${baseUrl}/api/room?type=nightfall`}
             className="bg-[#111114] border border-[#232328] hover:border-purple-700 hover:bg-[#15151a] rounded-xl p-4 text-left transition-colors"
           >
             <div className="w-9 h-9 rounded-lg bg-[#1a1a2e] text-purple-300 flex items-center justify-center mb-2.5">

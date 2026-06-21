@@ -128,7 +128,7 @@ export default function DayBreak() {
             Back to lobby
           </button>
           <a
-            href="http://localhost:3000/room?type=nightfall"
+            href={`${baseUrl}/api/room?type=nightfall`}
             className="flex-1 bg-amber-700 text-white text-sm py-2 rounded-lg hover:bg-amber-800"
           >
             Play again →
