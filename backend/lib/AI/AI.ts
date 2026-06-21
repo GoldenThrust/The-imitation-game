@@ -80,15 +80,15 @@ export default class Quanbit {
     system?: boolean;
   }) {
     data["myId"] = this.id;
-    console.log(`Received message for game ${data.gameId}: ${data.from} -> ${data.to}: ${data.text} chatId: ${data.chatId} respondSocket: ${data.respondSocket} myId: ${data.myId}`,
-    );
+    // console.log(`Received message for game ${data.gameId}: ${data.from} -> ${data.to}: ${data.text} chatId: ${data.chatId} respondSocket: ${data.respondSocket} myId: ${data.myId}`,
+    // );
     await aiQueue.add("respond", data, {
       delay: responseDelay(data.text),
     });
 
-    console.log(
-      `Added job to queue for game ${data.gameId}: ${data.from} -> ${data.to}: ${data.text}`,
-    );
+    // console.log(
+    //   `Added job to queue for game ${data.gameId}: ${data.from} -> ${data.to}: ${data.text}`,
+    // );
   }
 
   /**
@@ -97,7 +97,7 @@ export default class Quanbit {
    * ourselves) and returns a list of parsed actions instead of raw text.
    */
   async sendMessageToAI(text: string): Promise<QuanbitAction[]> {
-    console.log(`Sending message to AI: ${text}`);
+    // console.log(`Sending message to AI: ${text}`);
 
     const response = await this.chat.sendMessage({
       message: text,
@@ -105,10 +105,10 @@ export default class Quanbit {
 
     const actions = this.parseFunctionCalls(response);
 
-    console.log(
-      `Parsed ${actions.length} action(s) from AI response:`,
-      JSON.stringify(actions),
-    );
+    // console.log(
+    //   `Parsed ${actions.length} action(s) from AI response:`,
+    //   JSON.stringify(actions),
+    // );
 
     return actions;
   }

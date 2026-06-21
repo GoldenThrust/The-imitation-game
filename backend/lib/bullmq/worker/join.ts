@@ -34,9 +34,9 @@ export const joinWorker = new Worker(
         },
       });
 
-      console.log(
-        `Processing join job for game ${gameId} with isAI=${isAI} and attachPlayerId=${attachPlayerId}`,
-      );
+      // console.log(
+      //   `Processing join job for game ${gameId} with isAI=${isAI} and attachPlayerId=${attachPlayerId}`,
+      // );
 
       const humanPlayers = players.filter(
         (player) => player.role === Role.Human,
@@ -46,15 +46,15 @@ export const joinWorker = new Worker(
         (player) => player.role === Role.Quanbit,
       );
 
-      console.log(`Human players in game ${gameId}: ${humanPlayers.length}`);
+      // console.log(`Human players in game ${gameId}: ${humanPlayers.length}`);
 
-      console.log(
-        `Player ${isAI ? "AI" : "Human"} joined game ${gameId}. Total players: ${players.length}, AI players: ${AIPlayers.length}`,
-      );
+      // console.log(
+      //   `Player ${isAI ? "AI" : "Human"} joined game ${gameId}. Total players: ${players.length}, AI players: ${AIPlayers.length}`,
+      // );
       if (game.type === GameType.EyeFold && AIPlayers.length >= 2) {
-        console.log(
-          `Game ${gameId} is EyeFold and already has an AI player. Not allowing more AI players.`,
-        );
+        // console.log(
+        //   `Game ${gameId} is EyeFold and already has an AI player. Not allowing more AI players.`,
+        // );
         return;
       }
 
@@ -94,7 +94,7 @@ export const joinWorker = new Worker(
       }
 
       if (isAI) {
-        console.log(`AI player ${player.id} joined game ${gameId}`);
+        // console.log(`AI player ${player.id} joined game ${gameId}`);
         if (attachPlayerId) {
           quanbits.set(
             `${player.id}-${attachPlayerId}`,

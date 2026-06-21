@@ -10,7 +10,7 @@ export const aiWorker = new Worker(
   "respond",
   async (job) => {
     try {
-      console.log("Processing AI job with data:", job.data);
+      // console.log("Processing AI job with data:", job.data);
 
       const { gameId, from, to, respondSocket, text, myId, system } = job.data;
 
@@ -19,9 +19,9 @@ export const aiWorker = new Worker(
 
       const quanbit = quanbits.get(myId);
 
-      console.log(
-        `Retrieved Quanbit for game ${gameId}: ${quanbit ? "found" : "not found"} for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
-      );
+      // console.log(
+      //   `Retrieved Quanbit for game ${gameId}: ${quanbit ? "found" : "not found"} for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
+      // );
 
       if (!quanbit) {
         console.warn(
@@ -32,11 +32,11 @@ export const aiWorker = new Worker(
 
       const actions = await quanbit.sendMessageToAI(newText);
 
-      console.log(
-        `AI actions for game ${gameId}:`,
-        JSON.stringify(actions),
-        `for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
-      );
+      // console.log(
+      //   `AI actions for game ${gameId}:`,
+      //   JSON.stringify(actions),
+      //   `for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
+      // );
 
       const createdChats = [];
 
@@ -55,9 +55,9 @@ export const aiWorker = new Worker(
             await new Promise<void>((resolve, reject) => {
               setTimeout(async () => {
                 try {
-                  console.log(
-                    `Sending message from ${to} to ${action.targetPlayerId ?? from} after typing delay of ${action.typingDelayMs}ms: ${action.message} using socket ${respondSocket}`,
-                  );
+                  // console.log(
+                  //   `Sending message from ${to} to ${action.targetPlayerId ?? from} after typing delay of ${action.typingDelayMs}ms: ${action.message} using socket ${respondSocket}`,
+                  // );
                   io.to(respondSocket).emit("message:receive", {
                     id: chat.id,
                     text: chat.text,

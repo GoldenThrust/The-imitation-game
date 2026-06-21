@@ -66,7 +66,7 @@ export const gameWorker = new Worker(
       if (action === "end") {
         await prisma.game.update({
           where: { id: gameId },
-          data: { active: false, close: true, endAt: new Date() },
+          data: { active: false, endAt: new Date() },
         });
   
         const players = await prisma.player.findMany({

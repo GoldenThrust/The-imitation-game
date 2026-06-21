@@ -55,9 +55,9 @@ export const voteWorker = new Worker(
         },
       });
 
-      console.log(
-        `Processing vote job for game ${gameId}: voter ${voterId} voted against target ${targetId}`,
-      );
+      // console.log(
+      //   `Processing vote job for game ${gameId}: voter ${voterId} voted against target ${targetId}`,
+      // );
       for (const AI of AIs) {
         const quanbit = quanbits.get(AI.id);
 
@@ -92,11 +92,11 @@ export const voteWorker = new Worker(
 
       let kickedPlayer;
 
-      console.log(
-        voteAgainstTarget.length,
-        players.length,
-        voteAgainstTarget.length >= Math.ceil(players.length / 2),
-      );
+      // console.log(
+      //   voteAgainstTarget.length,
+      //   players.length,
+      //   voteAgainstTarget.length >= Math.ceil(players.length / 2),
+      // );
 
       if (voteAgainstTarget.length >= Math.ceil(players.length / 2)) {
         connectedPlayers.delete(targetId);

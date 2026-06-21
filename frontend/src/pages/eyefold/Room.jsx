@@ -98,9 +98,9 @@ export default function EyefoldRoom() {
 
     socketRef.current = socket;
 
-    socket.on("connect", () => {
-      console.log("Socket connected:", socket.id);
-    });
+    // socket.on("connect", () => {
+    //   console.log("Socket connected:", socket.id);
+    // });
 
     socket.on("player:joined", player => {
       if (!player?.id) return;
@@ -120,7 +120,7 @@ export default function EyefoldRoom() {
     });
 
     socket.on("player:left", () => {
-      console.log("player left");
+      // console.log("player left");
 
       navigate(
         `/eyefold/${roomId}/reveal?reason=${encodeURIComponent("player left")}`

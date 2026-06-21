@@ -75,7 +75,7 @@ export default function EyefoldLobby() {
     });
 
     socket.on("player:left", () => {
-      console.log("player left");
+      // console.log("player left");
       navigate(
         `/eyefold/${roomId}/reveal?reason=${encodeURIComponent(
           "player left"
@@ -85,9 +85,9 @@ export default function EyefoldLobby() {
 
     socket.on("game:started", ()=> navigate(`/eyefold/room/${roomId}?id=${id}`));
 
-    socket.on("disconnect", reason => {
-      console.log("Socket disconnected:", reason);
-    });
+    // socket.on("disconnect", reason => {
+    //   console.log("Socket disconnected:", reason);
+    // });
 
     return () => {
       socket.removeAllListeners();

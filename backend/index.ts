@@ -14,22 +14,13 @@ import { fileURLToPath } from "url";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
 const PORT = process.env.PORT || 80;
 const app = express();
 export const server = createServer(app);
 
 app.use(cors({ origin: `${process.env.CLIENT_URL}`, credentials: true }));
 
-
-
-app.use(express.static(path.join(__dirname, "client")));
-
-app.get(/(.*)/, (req, res) => {
-  res.sendFile(path.join(__dirname, "client", "index.html"));
-});
-
-app.get("/", (_, res) => {
+app.get("/api", (_, res) => {
   res.send("Welcome to imitation game");
 });
 
@@ -62,7 +53,6 @@ app.get("/api/room", async (req, res) => {
         kicked: false,
       },
     });
-
 
     if (gameType === GameType.NightFall && players.length % 3 === 0) {
       await joinQueue.add("join", {
@@ -170,7 +160,11 @@ app.get("/api/game-room/:id", async (req, res) => {
     let playersFold;
 
     if (game.type === GameType.EyeFold) {
-      playersFold = players.filter((player) => player.role === Role.Human || quanbits.has(`${player.id}-${playerId}`));
+      playersFold = players.filter(
+        (player) =>
+          player.role === Role.Human ||
+          quanbits.has(`${player.id}-${playerId}`),
+      );
     } else {
       playersFold = players;
     }
@@ -224,6 +218,12 @@ app.get("/api/game-room/:id/vote", async (req, res) => {
       message: "Error finding game",
     });
   }
+});
+
+app.use(express.static(path.join(__dirname, "client")));
+
+app.get(/(.*)/, (req, res) => {
+  res.sendFile(path.join(__dirname, "client", "index.html"));
 });
 
 server.listen(PORT, () => {
