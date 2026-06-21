@@ -49,7 +49,7 @@ export default function DayBreak() {
     if (!loaded) return;
     const run = () => {
       const quanbits = players.filter((p) => p.role === "Quanbit");
-      const survivingHumans = players.filter((p) => p.role === "Human" && !p.eliminated);
+      const survivingHumans = players.filter((p) => p.role === "Human" && !p.kicked);
   
       setAllImpostersCaught(quanbits.length === 0);
       setImposters(quanbits);
@@ -59,7 +59,7 @@ export default function DayBreak() {
     run();
   }, [players, loaded]);
 
-  const unmaskedCount = imposters.filter(i => i.eliminated).length;
+  const unmaskedCount = imposters.filter(i => i.kicked).length;
   const totalImposters = imposters.length;
 
   return (
@@ -89,7 +89,7 @@ export default function DayBreak() {
             <div>
               <p className="text-sm font-medium text-gray-50 mb-0.5">{imposter.name ?? imposter.id}</p>
               <span className="text-[11px] text-red-300 bg-[#2a1414] px-2.5 py-0.5 rounded-full">
-                {imposter.eliminated ? 'Synthetic · unmasked' : 'Synthetic · escaped detection'}
+                {imposter.kicked ? 'Synthetic · unmasked' : 'Synthetic · escaped detection'}
               </span>
             </div>
           </div>
@@ -104,7 +104,7 @@ export default function DayBreak() {
             {allImpostersCaught
               ? 'Humanity survives another night'
               : totalImposters > 0
-                ? `${imposters.find(i => !i.eliminated)?.name ?? 'The imposter'} survived the night undetected`
+                ? `${imposters.find(i => !i.kicked)?.name ?? 'The imposter'} survived the night undetected`
                 : 'The imposter survived the night undetected'}
           </p>
         </div>

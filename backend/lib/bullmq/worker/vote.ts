@@ -99,7 +99,6 @@ export const voteWorker = new Worker(
       // );
 
       if (voteAgainstTarget.length >= Math.ceil(players.length / 2)) {
-        connectedPlayers.delete(targetId);
         kickedPlayer = await prisma.player.update({
           where: {
             id: targetId,
@@ -108,7 +107,8 @@ export const voteWorker = new Worker(
             kicked: true,
           },
         });
-
+        
+        connectedPlayers.delete(targetId);
         quanbits.delete(targetId);
 
         io.to(gameId as string).emit("player:kicked", {
@@ -129,12 +129,11 @@ export const voteWorker = new Worker(
       });
 
       const eliminatedHumans = totalHumans - remainingHumans;
-      const eliminationThreshold = Math.ceil(totalHumans * (4 / 5));
+      const eliminationThreshold = Math.ceil(totalHumans * (1 / 5));
 
       const shouldEndGame =
-        remainingAIs <= 0 ||
-        (totalHumans > 0 && eliminatedHumans >= eliminationThreshold) ||
-        kickedPlayer?.role === Role.Quanbit;
+        remainingAIs <= 0 || totalHumans <= 0 ||
+         eliminatedHumans >= eliminationThreshold;
 
       if (shouldEndGame) {
         gameQueue.add("game-queue", {
