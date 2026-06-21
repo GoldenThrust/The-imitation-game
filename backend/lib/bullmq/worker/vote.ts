@@ -73,7 +73,7 @@ export const voteWorker = new Worker(
               ? `Player ${voterId} voted against you`
               : `Player ${voterId} voted against Player ${targetId}`,
           chatId: vote.id,
-          system: true
+          system: true,
         });
       }
 
@@ -107,9 +107,25 @@ export const voteWorker = new Worker(
             kicked: true,
           },
         });
-        
+
         connectedPlayers.delete(targetId);
         quanbits.delete(targetId);
+
+        for (const AI of AIs) {
+          const quanbit = quanbits.get(AI.id);
+
+          if (!quanbit || AI.id === voterId) continue;
+
+          await quanbit.addMessageToQueue({
+            gameId: gameId as string,
+            from: voterId,
+            to: AI.id,
+            respondSocket: gameId as string,
+            text: `Player ${targetId} eliminated`,
+            chatId: vote.id,
+            system: true,
+          });
+        }
 
         io.to(gameId as string).emit("player:kicked", {
           playerId: targetId,
@@ -132,8 +148,9 @@ export const voteWorker = new Worker(
       const eliminationThreshold = Math.ceil(totalHumans * (4 / 5));
 
       const shouldEndGame =
-        remainingAIs <= 0 || totalHumans <= 0 ||
-         eliminatedHumans >= eliminationThreshold;
+        remainingAIs <= 0 ||
+        totalHumans <= 0 ||
+        eliminatedHumans >= eliminationThreshold;
 
       if (shouldEndGame) {
         gameQueue.add("game-queue", {
