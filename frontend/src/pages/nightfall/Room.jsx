@@ -36,7 +36,7 @@ export default function NightfallRoom() {
     async function fetchPlayers() {
       try {
         const response = await fetch(
-          `${baseUrl}/game-room/${roomId}?id=${myId}`
+          `${baseUrl}/api/game-room/${roomId}?id=${myId}`
         );
 
         const data = await response.json();

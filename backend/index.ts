@@ -7,18 +7,27 @@ import { GameType, Role } from "./generated/prisma/enums";
 import cors from "cors";
 import { gameQueue } from "./lib/bullmq/queue/game";
 import { quanbits } from "./lib/AI/AI";
+import path from "path";
 
-const PORT = 3000;
+const PORT = process.env.PORT || 8080;
 const app = express();
 export const server = createServer(app);
 
 app.use(cors({ origin: `${process.env.CLIENT_URL}`, credentials: true }));
 
+
+
+app.use(express.static(path.join(__dirname, "dist")));
+
+app.get(/(.*)/, (req, res) => {
+  res.sendFile(path.join(__dirname, "dist", "index.html"));
+});
+
 app.get("/", (_, res) => {
   res.send("Welcome to imitation game");
 });
 
-app.get("/room", async (req, res) => {
+app.get("/api/room", async (req, res) => {
   try {
     const { type } = req.query;
     const gameType =
@@ -125,7 +134,7 @@ app.get("/room", async (req, res) => {
   }
 });
 
-app.get("/game-room/:id", async (req, res) => {
+app.get("/api/game-room/:id", async (req, res) => {
   const { id } = req.params;
   const { id: playerId } = req.query;
 
@@ -172,7 +181,7 @@ app.get("/game-room/:id", async (req, res) => {
   }
 });
 
-app.get("/game-room/:id/vote", async (req, res) => {
+app.get("/api/game-room/:id/vote", async (req, res) => {
   const { id } = req.params;
   const { voterId, votedFor } = req.body;
 

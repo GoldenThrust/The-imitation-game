@@ -21,7 +21,7 @@ export default function EyefoldLobby() {
     async function fetchPlayers() {
       try {
         const response = await fetch(
-          `${baseUrl}/game-room/${roomId}?id=${id}`
+          `${baseUrl}/api/game-room/${roomId}?id=${id}`
         );
 
         const data = await response.json();

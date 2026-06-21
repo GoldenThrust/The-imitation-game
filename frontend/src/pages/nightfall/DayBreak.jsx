@@ -19,7 +19,7 @@ export default function DayBreak() {
     async function fetchPlayers() {
       try {
         const response = await fetch(
-          `${baseUrl}/game-room/${roomId}?id=${myId}`
+          `${baseUrl}/api/game-room/${roomId}?id=${myId}`
         );
 
         const data = await response.json();
@@ -127,12 +127,12 @@ export default function DayBreak() {
           >
             Back to lobby
           </button>
-          <button
-            onClick={() => window.location.href = 'http://localhost:3000/room?type=nightfall'}
+          <a
+            href="http://localhost:3000/room?type=nightfall"
             className="flex-1 bg-amber-700 text-white text-sm py-2 rounded-lg hover:bg-amber-800"
           >
             Play again →
-          </button>
+          </a>
         </div>
       </div>
     </div>
