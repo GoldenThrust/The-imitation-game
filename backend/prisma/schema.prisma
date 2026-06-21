@@ -81,11 +81,10 @@ model Vote {
   voterId  String
   targetId String
 
-  round  Int     @default(1)
   reason String?
 
   createdAt DateTime @default(now())
 
-  @@unique([gameId, voterId, round])
+  @@unique([gameId, voterId])
   @@index([gameId, targetId])
 }

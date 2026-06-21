@@ -6,6 +6,7 @@ export const aiQueue = new Queue('respond',{
   connection: redis as ConnectionOptions,
   defaultJobOptions: {
     removeOnComplete: true,
+    removeOnFail: true,
     attempts: 3,
     backoff: {
       type: "exponential",

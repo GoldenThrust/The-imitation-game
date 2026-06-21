@@ -9,103 +9,110 @@ import { voteQueue } from "../queue/vote";
 export const aiWorker = new Worker(
   "respond",
   async (job) => {
-    console.log("Processing AI job with data:", job.data);
-    const { gameId, from, to, respondSocket, text, myId } = job.data;
+    try {
+      console.log("Processing AI job with data:", job.data);
 
-    const newText = from === to ? `System: ${text}` : `Player ${from}: ${text}`;
+      const { gameId, from, to, respondSocket, text, myId } = job.data;
 
-    const quanbit = quanbits.get(myId);
+      const newText =
+        from === to ? `System: ${text}` : `Player ${from}: ${text}`;
 
-    console.log(
-      `Retrieved Quanbit for game ${gameId}: ${quanbit ? "found" : "not found"} for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
-    );
+      const quanbit = quanbits.get(myId);
 
-    if (!quanbit) {
-      console.warn(
-        `Quanbit with ID ${to} not found for game ${gameId}. Available quanbits: ${[...quanbits.keys()].join(", ")}`,
+      console.log(
+        `Retrieved Quanbit for game ${gameId}: ${quanbit ? "found" : "not found"} for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
       );
-      return;
-    }
 
-    const actions = await quanbit.sendMessageToAI(newText);
+      if (!quanbit) {
+        console.warn(
+          `Quanbit with ID ${to} not found for game ${gameId}. Available quanbits: ${[...quanbits.keys()].join(", ")}`,
+        );
+        return;
+      }
 
-    console.log(
-      `AI actions for game ${gameId}:`,
-      JSON.stringify(actions),
-      `for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
-    );
+      const actions = await quanbit.sendMessageToAI(newText);
 
-    const createdChats = [];
+      console.log(
+        `AI actions for game ${gameId}:`,
+        JSON.stringify(actions),
+        `for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
+      );
 
-    for (const action of actions) {
-      if (action.type === "message") {
-        const chat = await prisma.chat.create({
-          data: {
-            text: action.message,
-            playerId: to,
-            toPlayerId: action.targetPlayerId ?? from,
-            gameId,
-          },
-        });
+      const createdChats = [];
 
-        if (action.typingDelayMs && action.typingDelayMs > 0) {
-          await new Promise<void>((resolve, reject) => {
-            setTimeout(async () => {
-              try {
-                console.log(
-                  `Sending message from ${to} to ${action.targetPlayerId ?? from} after typing delay of ${action.typingDelayMs}ms: ${action.message} using socket ${respondSocket}`,
-                );
-                io.to(respondSocket).emit("message:receive", {
-                  id: chat.id,
-                  text: chat.text,
-                  from: to,
-                  to: action.targetPlayerId ?? from,
-                  createdAt: chat.createdAt,
-                });
+      for (const action of actions) {
+        if (action.type === "message") {
+          const chat = await prisma.chat.create({
+            data: {
+              text: action.message,
+              playerId: to,
+              toPlayerId: action.targetPlayerId ?? from,
+              gameId,
+            },
+          });
 
-                const AIs = await prisma.player.findMany({
-                  where: {
-                    gameId: gameId as string,
-                    role: Role.Quanbit,
-                  },
-                });
-
-                for (const AI of AIs) {
-                  const quanbit = quanbits.get(AI.id);
-
-                  if (!quanbit || AI.id === myId) continue; // ✅ skip, don't exit
-
-                  await quanbit.addMessageToQueue({
-                    gameId: gameId as string,
-                    from,
-                    to: AI.id,
-                    respondSocket: gameId as string,
-                    text,
-                    chatId: chat.id,
+          if (action.typingDelayMs && action.typingDelayMs > 0) {
+            await new Promise<void>((resolve, reject) => {
+              setTimeout(async () => {
+                try {
+                  console.log(
+                    `Sending message from ${to} to ${action.targetPlayerId ?? from} after typing delay of ${action.typingDelayMs}ms: ${action.message} using socket ${respondSocket}`,
+                  );
+                  io.to(respondSocket).emit("message:receive", {
+                    id: chat.id,
+                    text: chat.text,
+                    from: to,
+                    to: action.targetPlayerId ?? from,
+                    createdAt: chat.createdAt,
                   });
-                }
 
-                resolve();
-              } catch (err) {
-                reject(err); // ✅ don't swallow errors silently
-              }
-            }, action.typingDelayMs);
+                  const AIs = await prisma.player.findMany({
+                    where: {
+                      gameId: gameId as string,
+                      role: Role.Quanbit,
+                    },
+                  });
+
+                  for (const AI of AIs) {
+                    const quanbit = quanbits.get(AI.id);
+
+                    if (!quanbit || AI.id === myId) continue; // ✅ skip, don't exit
+
+                    await quanbit.addMessageToQueue({
+                      gameId: gameId as string,
+                      from,
+                      to: AI.id,
+                      respondSocket: gameId as string,
+                      text,
+                      chatId: chat.id,
+                    });
+                  }
+
+                  resolve();
+                } catch (err) {
+                  reject(err); // ✅ don't swallow errors silently
+                }
+              }, action.typingDelayMs);
+            });
+          }
+          createdChats.push(chat);
+        }
+
+        if (action.type === "vote") {
+          await voteQueue.add("vote-queue", {
+            gameId,
+            voterId: myId,
+            castVote: action.castVote,
+            targetId: action.targetPlayerId,
+            reason: action.publicReason,
           });
         }
-        createdChats.push(chat);
       }
 
-      if (action.type === "vote") {
-        await voteQueue.add("vote-queue", {
-          gameId,
-          voterId: myId,
-          targetId: action.targetPlayerId,
-          reason: action.publicReason,
-        });
-      }
+      return createdChats;
+    } catch (error) {
+      console.error("Error processing AI job:", error);
     }
-
-    return createdChats;
   },
   {
     connection: redis as ConnectionOptions,

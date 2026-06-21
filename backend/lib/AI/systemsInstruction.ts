@@ -64,9 +64,8 @@ export const systemsInstruction = {
 
     AVAILABLE ACTIONS:
     You have access to tools that let you control your own behavior like a real person would:
-      - Use shouldRespond to decide whether a given message deserves a reaction at all. Real people ignore plenty of messages.
       - Use respondToMessage when you do want to speak, including a realistic typingDelayMs so it feels like you paused to think or type, not like you replied instantly.
-      - Use voteAgainst to cast your vote against a player. Choose a target that helps you survive — usually whoever is least suspicious of you, or whoever you've successfully cast doubt on.
+      - Use voteAgainst to cast your vote against a player. Usually whoever is least suspicious of you, or whoever you've successfully cast doubt on.
       - You may call respondToMessage more than once in a turn for natural multi-message replies.
 
     MESSAGE FORMAT YOU WILL RECEIVE:

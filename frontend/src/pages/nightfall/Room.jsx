@@ -53,8 +53,6 @@ export default function NightfallRoom() {
           return [...prev, ...newPlayers];
         });
 
-        // if the server already considers us eliminated (e.g. on a refresh
-        // mid-spectate), restore that state instead of pretending we're live
         const me = data.players.find(p => p.id === myId);
         if (me?.eliminated) {
           setEliminated(true);
@@ -130,9 +128,11 @@ export default function NightfallRoom() {
       if (voterId === myId) {
         setSelected(targetId);
       } else {
-        const voter = players.find(p => p.id === voterId);
-        const target = players.find(p => p.id === targetId);
-        showToast(`${voter?.name ?? voterId} voted against ${target?.name ?? targetId}`);
+        if (targetId === myId) {
+          showToast(`${voterId.slice(-2)} voted against you`);
+        } else {
+          showToast(`${voterId.slice(-2)} voted against ${targetId.slice(-2)}`);
+        }
       }
     });
 
@@ -184,7 +184,8 @@ export default function NightfallRoom() {
       text,
     });
 
-    setMessage('');
+    setMessages(prev => [...prev, { text: text, from: myId }]);
+    setMessage("");
   }, [message, roomId, myId, eliminated]);
 
   const castVote = useCallback((playerId) => {
@@ -195,6 +196,8 @@ export default function NightfallRoom() {
       voterId: myId,
       targetId: playerId,
     });
+
+    setSelected(playerId);
   }, [roomId, myId, eliminated]);
 
   const selectedPlayer = players.find(p => p.id === selected);
@@ -237,9 +240,8 @@ export default function NightfallRoom() {
               key={p.id}
               onClick={() => !disabled && castVote(p.id)}
               disabled={disabled}
-              className={`relative flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg shrink-0 w-14 ${
-                selected === p.id ? 'bg-[#2a1410] border border-red-700' : 'border border-transparent'
-              } ${!disabled && 'hover:bg-[#15151a]'} ${(eliminated || p.eliminated) && !isSelf ? 'opacity-40' : ''} ${isSelf ? 'opacity-45' : ''}`}
+              className={`relative flex flex-col items-center gap-1 px-2 py-1.5 rounded-lg shrink-0 w-14 ${selected === p.id ? 'bg-[#2a1410] border border-red-700' : 'border border-transparent'
+                } ${!disabled && 'hover:bg-[#15151a]'} ${(eliminated || p.eliminated) && !isSelf ? 'opacity-40' : ''} ${isSelf ? 'opacity-45' : ''}`}
             >
               {(isSelf && eliminated) && (
                 <span className="absolute -top-0.5 right-1 text-red-400 text-[11px]">
@@ -251,12 +253,11 @@ export default function NightfallRoom() {
                   <i className="ti ti-skull" />
                 </span>
               )}
-              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-medium ${
-                isSelf ? 'bg-[#1c1c20] text-gray-500' : 'bg-[#2a1f10] text-amber-300'
-              }`}>
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-medium ${isSelf ? 'bg-[#1c1c20] text-gray-500' : 'bg-[#2a1f10] text-amber-300'
+                }`}>
                 {(p.id).slice(-2).toUpperCase()}
               </div>
-              <span className="text-[10px] text-gray-400">{isSelf ? 'You' : p.id}</span>
+              <span className="text-[10px] text-gray-400">{isSelf ? 'You' : `....${p.id.slice(-5)}`}</span>
             </button>
           );
         })}
@@ -273,9 +274,8 @@ export default function NightfallRoom() {
                   {sender?.name ?? m.from}
                 </p>
               )}
-              <div className={`text-xs px-3 py-2 rounded-lg ${
-                isMe ? 'bg-purple-600 text-white' : 'bg-[#1a1a2e] text-gray-200'
-              }`}>
+              <div className={`text-xs px-3 py-2 rounded-lg ${isMe ? 'bg-purple-600 text-white' : 'bg-[#1a1a2e] text-gray-200'
+                }`}>
                 {m.text}
               </div>
             </div>
@@ -308,9 +308,8 @@ export default function NightfallRoom() {
         <button
           onClick={send}
           disabled={eliminated}
-          className={`px-4 rounded-lg ${
-            eliminated ? 'bg-[#1c1c20] text-gray-600 cursor-not-allowed' : 'bg-purple-600 text-white hover:bg-purple-700'
-          }`}
+          className={`px-4 rounded-lg ${eliminated ? 'bg-[#1c1c20] text-gray-600 cursor-not-allowed' : 'bg-purple-600 text-white hover:bg-purple-700'
+            }`}
         >
           →
         </button>

@@ -15,7 +15,8 @@ export type QuanbitAction =
       targetPlayerId?: string;
       typingDelayMs?: number;
     }
-  | { type: "vote"; targetPlayerId: string; publicReason: string };
+  | { type: "vote"; targetPlayerId: string; 
+     publicReason: string };
 
 export default class Quanbit {
   chat: any;
@@ -157,6 +158,7 @@ export default class Quanbit {
           actions.push({
             type: "vote",
             targetPlayerId,
+            // castVote: castVote ?? true,
             publicReason: publicReason ?? "",
           });
           break;

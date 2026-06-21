@@ -138,7 +138,7 @@ io.on("connection", async (socket) => {
       }
     });
 
-    socket.on("vote:cast", async ({ voterId, targetId }) => {
+    socket.on("vote:cast", async ({ voterId, targetId, castVote, publicReason = null }) => {
       const voterSocket = connectedPlayers.get(voterId);
 
       if (!voterSocket) {
@@ -146,10 +146,12 @@ io.on("connection", async (socket) => {
         return;
       }
 
-      voteQueue.add("vote-queue", {
+      await voteQueue.add("vote-queue", {
         gameId: roomId as string,
         voterId,
         targetId,
+        castVote,
+        publicReason,
       });
     });
 
