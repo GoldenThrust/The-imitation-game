@@ -10,6 +10,7 @@ import { quanbits } from "./lib/AI/AI";
 import path from "path";
 
 import { fileURLToPath } from "url";
+import { checkToStart } from "./lib/utils";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -42,8 +43,13 @@ app.get("/api/room", async (req, res) => {
         data: {
           type: gameType,
           active: true,
-          duration: gameType === GameType.NightFall ? 60 * 10 : 60 * 5, // 10 minutes for NightFall, 5 minutes for EyeFold
+          duration: gameType === GameType.NightFall ? 60 * 10 : 60 * 5,
         },
+      });
+
+      await joinQueue.add("join", {
+        isAI: true,
+        gameId: game.id,
       });
     }
 
@@ -54,49 +60,22 @@ app.get("/api/room", async (req, res) => {
       },
     });
 
-    if (gameType === GameType.NightFall && players.length % 3 === 0) {
+    const humanPlayers = players.filter((player) => player.role === Role.Human);
+
+    if (game.type === GameType.EyeFold && humanPlayers.length >= 2 || (game.type === GameType.NightFall && players.length >= 10)) {
+      return res.redirect(
+        `${process.env.CLIENT_URL}/eyefold/${game.id}?error=game is full, try joining another one`,
+      );
+    }
+
+    if (
+      gameType === GameType.NightFall &&
+      players.length % Math.floor(Math.random() * 4) === 0
+    ) {
       await joinQueue.add("join", {
         gameId: game.id,
         isAI: true,
       });
-    }
-
-    const humanPlayers = players.filter((player) => player.role === Role.Human);
-
-    if (
-      (game.type === GameType.EyeFold && humanPlayers.length >= 1) ||
-      humanPlayers.length >= 8
-    ) {
-      await prisma.game.update({
-        where: {
-          id: game.id,
-        },
-        data: {
-          active: false,
-        },
-      });
-    }
-
-    if (
-      players.length >= 10 ||
-      (game.type === GameType.EyeFold && humanPlayers.length >= 2)
-    ) {
-      return res.redirect(
-        `${process.env.CLIENT_URL}?error=game is full. try again`,
-      );
-    }
-
-    if (game.type === GameType.NightFall && players.length >= 5) {
-      gameQueue.add(
-        "game-queue",
-        {
-          gameId: game.id,
-          action: "start",
-        },
-        {
-          delay: 5000,
-        },
-      );
     }
 
     const player = await prisma.player.create({
@@ -106,15 +85,20 @@ app.get("/api/room", async (req, res) => {
       },
     });
 
-    if (gameType === GameType.EyeFold) {
-      await joinQueue.add("join", {
-        isAI: true,
-        gameId: game.id,
-        attachPlayerId: player.id,
-      });
+    if (await checkToStart(game.id)) {
+      gameQueue.add(
+        "game-queue",
+        {
+          gameId: game.id,
+          action: "start",
+        },
+        {
+          delay: gameType === GameType.NightFall ? 10000 : 2000
+        }
+      );
     }
 
-    if (gameType === "NightFall") {
+    if (gameType === GameType.NightFall) {
       res.redirect(
         `${process.env.CLIENT_URL}/nightfall/${game.id}?id=${player.id}`,
       );
@@ -124,6 +108,7 @@ app.get("/api/room", async (req, res) => {
       );
     }
   } catch (error) {
+    console.error(error);
     res.redirect(
       `${process.env.CLIENT_URL}?error=error joining lobby. try again`,
     );
@@ -157,24 +142,25 @@ app.get("/api/game-room/:id", async (req, res) => {
       },
     });
 
-    let playersFold;
+    // let playersFold;
 
-    if (game.type === GameType.EyeFold) {
-      playersFold = players.filter(
-        (player) =>
-          player.role === Role.Human ||
-          quanbits.has(`${player.id}-${playerId}`),
-      );
-    } else {
-      playersFold = players;
-    }
+    // if (game.type === GameType.EyeFold) {
+    //   playersFold = players.filter(
+    //     (player) =>
+    //       player.role === Role.Human ||
+    //       quanbits.has(`${player.id}-${playerId}`),
+    //   );
+    // } else {
+    //   playersFold = players;
+    // }
 
     return res.json({
       message: "successful",
-      players: playersFold,
+      players,
       game,
     });
   } catch (error) {
+    console.error(error);
     return res.json({
       message: "Error finding game",
     });
@@ -214,6 +200,7 @@ app.get("/api/game-room/:id/vote", async (req, res) => {
       game,
     });
   } catch (error) {
+    console.error(error);
     return res.json({
       message: "Error finding game",
     });

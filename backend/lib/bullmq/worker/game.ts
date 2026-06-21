@@ -5,7 +5,7 @@ import redis from "../../redis";
 import { prisma } from "../../prisma";
 import { gameQueue } from "../queue/game";
 import { quanbits } from "../../AI/AI";
-import { Role } from "../../../generated/prisma/enums";
+import { GameType, Role } from "../../../generated/prisma/enums";
 
 export const gameWorker = new Worker(
   "game-queue",
@@ -29,7 +29,7 @@ export const gameWorker = new Worker(
         }
         const game = await prisma.game.update({
           where: { id: gameId },
-          data: { active: false, startAt: new Date() }, // 10 minutes
+          data: { active: false, startAt: new Date() },
         });
 
         gameQueue.add(
@@ -47,7 +47,6 @@ export const gameWorker = new Worker(
           where: {
             gameId,
             kicked: false,
-            role: Role.Quanbit,
           },
         });
 
@@ -55,23 +54,14 @@ export const gameWorker = new Worker(
           (player) => player.role === Role.Quanbit,
         );
 
-        const humanPlayers = players.filter(
-          (player) => player.role === Role.Human,
-        );
-
         quanbitsPlayers.forEach((player) => {
           const quanbit = quanbits.get(player.id);
 
           quanbit?.gameStarted();
-          if (game.type === "EyeFold") {
-            humanPlayers.forEach((human) => {
-              const quanbit = quanbits.get(`${player.id}-${human.id}`);
-
-              quanbit?.gameStarted();
-            });
-          }
         });
 
+        if (game.type === GameType.NightFall && players.length < 10) {
+        }
         io.to(gameId).emit("game:started");
       }
 
@@ -86,15 +76,6 @@ export const gameWorker = new Worker(
             gameId,
           },
         });
-
-        // prisma.player.updateMany({
-        //   where: {
-        //     gameId,
-        //   },
-        //   data: {
-        //     kicked: true,
-        //   },
-        // });
 
         players.forEach((player) => {
           quanbits.delete(player.id);

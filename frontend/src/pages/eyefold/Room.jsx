@@ -15,6 +15,11 @@ export default function EyefoldRoom() {
   const { id: roomId } = useParams();
   const socketRef = useRef(null);
   const myId = searchParams.get("id");
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [chats]);
 
   useEffect(() => {
     const t = setInterval(() => {
@@ -155,9 +160,9 @@ export default function EyefoldRoom() {
       <div className="px-4 py-2.5 bg-[#0e0e10] border-b border-[#1c1c20] text-xs text-gray-500">
         Chat with both trainees. Spot the synthetic before time runs out.
       </div>
-      <div className="flex-1 grid grid-cols-2 divide-x divide-[#1c1c20]">
+      <div className="flex-1 grid grid-cols-2 divide-x divide-[#1c1c20]" ref={scrollRef}>
         {otherPlayers.map(p => (
-          <div key={p.id} className="flex flex-col">
+          <div key={p.id} className="flex flex-col h-full overflow-y-auto">
             <div className="px-4 py-3 border-b border-[#1c1c20] flex items-center gap-2">
               <div className="w-8 h-8 rounded-full bg-[#1a1a2e] text-purple-300 flex items-center justify-center text-xs font-medium">
                 {p.id.slice(-2).toUpperCase()}

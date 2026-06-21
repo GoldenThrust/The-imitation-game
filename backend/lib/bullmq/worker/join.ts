@@ -8,12 +8,13 @@ import { prisma } from "../../prisma";
 import Quanbit, { quanbits } from "../../AI/AI";
 import { GameType, Role } from "../../../generated/prisma/enums";
 import { gameQueue } from "../queue/game";
+import { checkToStart } from "../../utils";
 
 export const joinWorker = new Worker(
   "join-queue",
   async (job) => {
     try {
-      const { gameId, isAI, attachPlayerId } = job.data;
+      const { gameId, isAI } = job.data;
 
       if (isAI) {
         await sleep(humanJoinDelay());
@@ -34,27 +35,11 @@ export const joinWorker = new Worker(
         },
       });
 
-      // console.log(
-      //   `Processing join job for game ${gameId} with isAI=${isAI} and attachPlayerId=${attachPlayerId}`,
-      // );
-
-      const humanPlayers = players.filter(
-        (player) => player.role === Role.Human,
-      );
-
       const AIPlayers = players.filter(
         (player) => player.role === Role.Quanbit,
       );
 
-      // console.log(`Human players in game ${gameId}: ${humanPlayers.length}`);
-
-      // console.log(
-      //   `Player ${isAI ? "AI" : "Human"} joined game ${gameId}. Total players: ${players.length}, AI players: ${AIPlayers.length}`,
-      // );
-      if (game.type === GameType.EyeFold && AIPlayers.length >= 2) {
-        // console.log(
-        //   `Game ${gameId} is EyeFold and already has an AI player. Not allowing more AI players.`,
-        // );
+      if (game.type === GameType.EyeFold && AIPlayers.length >= 1) {
         return;
       }
 
@@ -69,42 +54,22 @@ export const joinWorker = new Worker(
         },
       });
 
-      if (
-        (game!.type === GameType.EyeFold && AIPlayers.length >= 1) ||
-        players.length >= 9
-      ) {
-        await prisma.game.update({
-          where: {
-            id: game.id,
-          },
-          data: {
-            active: false,
-          },
-        });
-        await gameQueue.add(
+      if (isAI) {
+        quanbits.set(player.id, new Quanbit(game.type, player.id, game.id));
+        io.to(gameId).emit("player:joined", player);
+      }
+
+      if (await checkToStart(game.id)) {
+        gameQueue.add(
           "game-queue",
           {
-            gameId: game!.id,
+            gameId: game.id,
             action: "start",
           },
           {
-            delay: 2000,
+            delay: game.type === GameType.NightFall ? 10000 : 2000,
           },
         );
-      }
-
-      if (isAI) {
-        // console.log(`AI player ${player.id} joined game ${gameId}`);
-        if (attachPlayerId) {
-          quanbits.set(
-            `${player.id}-${attachPlayerId}`,
-            new Quanbit(game.type, `${player.id}-${attachPlayerId}`, game.id),
-          );
-          io.to(attachPlayerId).emit("player:joined", player);
-        } else {
-          quanbits.set(player.id, new Quanbit(game.type, player.id, game.id));
-          io.to(gameId).emit("player:joined", player);
-        }
       }
 
       return player;

@@ -36,9 +36,9 @@ export function responseDelay(message: string) {
 }
 
 export function humanJoinDelay() {
-  const base = 2000;
-  const thinking = Math.random() * 8000;
-  const distraction = Math.random() < 0.3 ? Math.random() * 12000 : 0;
+  const base = 1000;
+  const thinking = Math.random() * 3000;
+  const distraction = Math.random() < 0.3 ? Math.random() * 10000 : 0;
 
   return base + thinking + distraction;
 }

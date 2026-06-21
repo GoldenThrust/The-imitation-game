@@ -4,6 +4,7 @@ import { aiQueue } from "../bullmq/queue/ai";
 import { responseDelay } from "../../utils";
 import { GameType } from "../../generated/prisma/enums";
 import { eyefoldTools, nightfallTools } from "./gemini/tools";
+import { prisma } from "../prisma";
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GOOGLE_API_KEY!,
@@ -20,14 +21,16 @@ export type QuanbitAction =
 
 export default class Quanbit {
   chat: any;
-  private gameType: GameType;
-  private id: string;
-  private roomId: string;
+  public gameType: GameType;
+  public id: string;
+  public roomId: string;
+  private mainId: string;
 
   constructor(type: GameType, id: string, roomId: string) {
     this.id = id;
     this.gameType = type;
     this.roomId = roomId;
+    this.mainId = type === GameType.NightFall ? this.id : this.id.split("-")[0];
 
     const tools = type === GameType.NightFall ? nightfallTools : eyefoldTools;
 
@@ -50,7 +53,18 @@ export default class Quanbit {
   }
 
   async gameStarted() {
-    const text = "Game Started. Your ID is " + this.id + ".";
+    const players = await prisma.player.findMany({
+      where: {
+        gameId: this.roomId,
+        kicked: false,
+        NOT: {
+          id: this.mainId,
+        }
+      },
+    });
+  
+    let text = "Game Started. Your ID is " + this.mainId + ". Others in the game: " + players.map(p => p.id).join(", ") + ".";
+
     await aiQueue.add(
       "respond",
       {
@@ -61,6 +75,7 @@ export default class Quanbit {
         chatId: 0,
         respondSocket: this.roomId as string,
         myId: this.id,
+        system: true,
       },
       {
         delay: responseDelay(text),
@@ -80,8 +95,8 @@ export default class Quanbit {
     system?: boolean;
   }) {
     data["myId"] = this.id;
-    // console.log(`Received message for game ${data.gameId}: ${data.from} -> ${data.to}: ${data.text} chatId: ${data.chatId} respondSocket: ${data.respondSocket} myId: ${data.myId}`,
-    // );
+    console.log(`Received message for game ${data.gameId}: ${data.from} -> ${data.to}: ${data.text} chatId: ${data.chatId} respondSocket: ${data.respondSocket} myId: ${data.myId}`,
+    );
     await aiQueue.add("respond", data, {
       delay: responseDelay(data.text),
     });
@@ -97,7 +112,7 @@ export default class Quanbit {
    * ourselves) and returns a list of parsed actions instead of raw text.
    */
   async sendMessageToAI(text: string): Promise<QuanbitAction[]> {
-    // console.log(`Sending message to AI: ${text}`);
+    console.log(`Sending message to AI: ${text}`);
 
     const response = await this.chat.sendMessage({
       message: text,

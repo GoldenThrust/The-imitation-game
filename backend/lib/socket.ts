@@ -96,7 +96,6 @@ io.on("connection", async (socket) => {
         return;
       }
 
-
       const chat = await prisma.chat.create({
         data: {
           text,
@@ -114,60 +113,48 @@ io.on("connection", async (socket) => {
         createdAt: chat.createdAt,
       });
 
-      if (game!.type === GameType.EyeFold) {
-        const quanbit = quanbits.get(`${to}-${from}`);
+      const AIs = await prisma.player.findMany({
+        where: {
+          gameId: roomId as string,
+          role: Role.Quanbit,
+        },
+      });
+
+      for (const AI of AIs) {
+        const quanbit = quanbits.get(AI.id);
 
         if (!quanbit) return;
 
         await quanbit.addMessageToQueue({
           gameId: roomId as string,
           from,
-          to,
-          respondSocket: from,
+          to: AI.id,
+          respondSocket: game?.type === GameType.EyeFold ? to : roomId as string,
           text,
           chatId: chat.id,
         });
-      } else {
-        const AIs = await prisma.player.findMany({
-          where: {
-            gameId: roomId as string,
-            role: Role.Quanbit,
-          },
-        });
+      }
+    });
 
-        for (const AI of AIs) {
-          const quanbit = quanbits.get(AI.id);
+    socket.on(
+      "vote:cast",
+      async ({ voterId, targetId, castVote, publicReason = null }) => {
+        const voterSocket = connectedPlayers.get(voterId);
 
-          if (!quanbit) return;
-
-          await quanbit.addMessageToQueue({
-            gameId: roomId as string,
-            from,
-            to: AI.id,
-            respondSocket: roomId as string,
-            text,
-            chatId: chat.id,
-          });
+        if (!voterSocket) {
+          console.error(`Voter socket not found for player ${voterId}`);
+          return;
         }
-      }
-    });
 
-    socket.on("vote:cast", async ({ voterId, targetId, castVote, publicReason = null }) => {
-      const voterSocket = connectedPlayers.get(voterId);
-
-      if (!voterSocket) {
-        console.error(`Voter socket not found for player ${voterId}`);
-        return;
-      }
-
-      await voteQueue.add("vote-queue", {
-        gameId: roomId as string,
-        voterId,
-        targetId,
-        castVote,
-        publicReason,
-      });
-    });
+        await voteQueue.add("vote-queue", {
+          gameId: roomId as string,
+          voterId,
+          targetId,
+          castVote,
+          publicReason,
+        });
+      },
+    );
 
     socket.on("disconnect", async () => {
       connectedPlayers.delete(playerId);
