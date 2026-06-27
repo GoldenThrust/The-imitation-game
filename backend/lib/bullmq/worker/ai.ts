@@ -82,7 +82,7 @@ export const aiWorker = new Worker(
                   for (const AI of AIs) {
                     const quanbit = quanbits.get(AI.id);
 
-                    if (!quanbit || AI.id === myId) continue; // ✅ skip, don't exit
+                    if (!quanbit || AI.id === myId) continue;
 
                     await quanbit.addMessageToQueue({
                       gameId: gameId as string,

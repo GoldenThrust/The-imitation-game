@@ -1,4 +1,8 @@
-import { FunctionCallingConfigMode, GoogleGenAI } from "@google/genai";
+import {
+  FunctionCallingConfigMode,
+  GoogleGenAI,
+  ThinkingLevel,
+} from "@google/genai";
 import { systemsInstruction } from "./systemsInstruction";
 import { aiQueue } from "../bullmq/queue/ai";
 import { responseDelay } from "../../utils";
@@ -16,8 +20,7 @@ export type QuanbitAction =
       targetPlayerId?: string;
       typingDelayMs?: number;
     }
-  | { type: "vote"; targetPlayerId: string; 
-     publicReason: string };
+  | { type: "vote"; targetPlayerId: string; publicReason: string };
 
 export default class Quanbit {
   chat: any;
@@ -25,6 +28,7 @@ export default class Quanbit {
   public id: string;
   public roomId: string;
   private mainId: string;
+  private lastTime: number;
 
   constructor(type: GameType, id: string, roomId: string) {
     this.id = id;
@@ -35,13 +39,17 @@ export default class Quanbit {
     const tools = type === GameType.NightFall ? nightfallTools : eyefoldTools;
 
     this.chat = ai.chats.create({
-      model: "gemini-3.5-flash",
+      model: "gemma-4-26b-a4b-it",
+      // model: "gemini-3.5-flash",
       config: {
         systemInstruction:
           type === GameType.NightFall
             ? systemsInstruction.NightFall
             : systemsInstruction.EyeFold,
         temperature: 1,
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.HIGH,
+        },
         tools: [{ functionDeclarations: tools }],
         // force a tool call every turn so we never get unstructured prose
         // we'd have to fall back on
@@ -50,6 +58,33 @@ export default class Quanbit {
         },
       },
     });
+
+    this.lastTime = Date.now();
+
+    setTimeout(async () => {
+      const randomDelay = Math.floor(Math.random() * 5000) + 1000;
+      if (this.lastTime + randomDelay < Date.now()) {
+        let text = `You have not say anything for ${Date.now() - (this.lastTime + randomDelay)}ms. You can decide to say something or not.`;
+
+        await aiQueue.add(
+          "respond",
+          {
+            gameId: this.roomId,
+            from: this.id,
+            to: this.id,
+            text,
+            chatId: 0,
+            respondSocket: this.roomId as string,
+            myId: this.id,
+            system: true,
+          },
+          {
+            attempts: 3,
+          },
+        );
+      }
+      this.gameStarted();
+    }, 1000);
   }
 
   async gameStarted() {
@@ -59,11 +94,16 @@ export default class Quanbit {
         kicked: false,
         NOT: {
           id: this.mainId,
-        }
+        },
       },
     });
-  
-    let text = "Game Started. Your ID is " + this.mainId + ". Others in the game: " + players.map(p => p.id).join(", ") + ".";
+
+    let text =
+      "Game Started. Your ID is " +
+      this.mainId +
+      ". Others Players IDs are " +
+      players.map((p) => p.id).join(", ") +
+      ".";
 
     await aiQueue.add(
       "respond",
@@ -78,7 +118,6 @@ export default class Quanbit {
         system: true,
       },
       {
-        delay: responseDelay(text),
         attempts: 3,
       },
     );
@@ -95,15 +134,9 @@ export default class Quanbit {
     system?: boolean;
   }) {
     data["myId"] = this.id;
-    // console.log(`Received message for game ${data.gameId}: ${data.from} -> ${data.to}: ${data.text} chatId: ${data.chatId} respondSocket: ${data.respondSocket} myId: ${data.myId}`,
-    // );
     await aiQueue.add("respond", data, {
       delay: responseDelay(data.text),
     });
-
-    // console.log(
-    //   `Added job to queue for game ${data.gameId}: ${data.from} -> ${data.to}: ${data.text}`,
-    // );
   }
 
   /**
