@@ -28,7 +28,7 @@ export default class Quanbit {
   public id: string;
   public roomId: string;
   private mainId: string;
-  private lastTime: number;
+  private lastTime: number | null;
 
   constructor(type: GameType, id: string, roomId: string) {
     this.id = id;
@@ -59,39 +59,32 @@ export default class Quanbit {
       },
     });
 
-    this.lastTime = Date.now();
+    this.lastTime = null;
 
-    setTimeout(async () => {
-      const randomDelay = Math.floor(Math.random() * 5000) + 1000;
-      if (this.lastTime + randomDelay < Date.now()) {
-        let text = `You have not say anything for ${Date.now() - (this.lastTime + randomDelay)}ms. You can decide to say something or not.`;
+    setInterval(async () => {
+      const randomDelay = Math.floor(Math.random() * 60000) + 60000;
+      if (this.lastTime && (Date.now() - this.lastTime >= randomDelay)) {
+        let text = `You have not say anything for ${Date.now() - this.lastTime}ms. You can decide to say something or not.`;
 
-        await aiQueue.add(
-          "respond",
-          {
-            gameId: this.roomId,
-            from: this.id,
-            to: this.id,
-            text,
-            chatId: 0,
-            respondSocket: this.roomId as string,
-            myId: this.id,
-            system: true,
-          },
-          {
-            attempts: 3,
-          },
-        );
+        this.addMessageToQueue({
+          gameId: this.roomId,
+          from: this.id,
+          to: this.id,
+          text,
+          chatId: 0,
+          respondSocket: this.roomId as string,
+          myId: this.id,
+          system: true,
+        });
       }
-      this.gameStarted();
-    }, 1000);
+    }, 30000);
   }
 
   async gameStarted() {
     const players = await prisma.player.findMany({
       where: {
         gameId: this.roomId,
-        kicked: false,
+        // kicked: false,
         NOT: {
           id: this.mainId,
         },
@@ -99,28 +92,22 @@ export default class Quanbit {
     });
 
     let text =
-      "Game Started. Your ID is " +
+      "Game Started. Your Id is " +
       this.mainId +
-      ". Others Players IDs are " +
+      ". Others Players Id are " +
       players.map((p) => p.id).join(", ") +
       ".";
 
-    await aiQueue.add(
-      "respond",
-      {
-        gameId: this.roomId,
-        from: this.id,
-        to: this.id,
-        text,
-        chatId: 0,
-        respondSocket: this.roomId as string,
-        myId: this.id,
-        system: true,
-      },
-      {
-        attempts: 3,
-      },
-    );
+    this.addMessageToQueue({
+      gameId: this.roomId,
+      from: this.id,
+      to: this.id,
+      text,
+      chatId: 0,
+      respondSocket: this.roomId as string,
+      myId: this.id,
+      system: true,
+    });
   }
 
   async addMessageToQueue(data: {
@@ -128,14 +115,15 @@ export default class Quanbit {
     from: string;
     to: string;
     text: string;
-    chatId: string;
+    chatId: string | number;
     respondSocket: string;
     myId?: string;
     system?: boolean;
   }) {
+    this.lastTime = Date.now();
     data["myId"] = this.id;
     await aiQueue.add("respond", data, {
-      delay: responseDelay(data.text),
+      delay: data.system !== true ? responseDelay(data.text) : 0,
     });
   }
 
@@ -145,18 +133,11 @@ export default class Quanbit {
    * ourselves) and returns a list of parsed actions instead of raw text.
    */
   async sendMessageToAI(text: string): Promise<QuanbitAction[]> {
-    // console.log(`Sending message to AI: ${text}`);
-
     const response = await this.chat.sendMessage({
       message: text,
     });
 
     const actions = this.parseFunctionCalls(response);
-
-    // console.log(
-    //   `Parsed ${actions.length} action(s) from AI response:`,
-    //   JSON.stringify(actions),
-    // );
 
     return actions;
   }

@@ -3,7 +3,7 @@ import { quanbits } from "../../AI/AI";
 import { prisma } from "../../prisma";
 import { io } from "../../socket";
 import redis from "../../redis";
-import { GameType, Role } from "../../../generated/prisma/browser";
+import { Role } from "../../../generated/prisma/browser";
 import { voteQueue } from "../queue/vote";
 
 export const aiWorker = new Worker(
@@ -14,16 +14,16 @@ export const aiWorker = new Worker(
 
       let { gameId, from, to, respondSocket, text, myId, system } = job.data;
 
+      console.log(
+        `Processing AI job for game ${gameId} from ${from} to ${to} respond to ${respondSocket}: ${text}`,
+      );
+
       from = from.split("-")[0];
       to = to.split("-")[0];
 
       const isSystemMessage = system === true || from === to;
 
       const quanbit = quanbits.get(myId);
-
-      // console.log(
-      //   `Retrieved Quanbit for game ${gameId}: ${quanbit ? "found" : "not found"} for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
-      // );
 
       if (!quanbit) {
         console.warn(
@@ -38,11 +38,11 @@ export const aiWorker = new Worker(
 
       const actions = await quanbit.sendMessageToAI(newText);
 
-      // console.log(
-      //   `AI actions for game ${gameId}:`,
-      //   JSON.stringify(actions),
-      //   `for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
-      // );
+      console.log(
+        `AI actions for game ${gameId}:`,
+        JSON.stringify(actions),
+        `for message from ${from} to ${to} respond to ${respondSocket}: ${text}`,
+      );
 
       const createdChats = [];
 
