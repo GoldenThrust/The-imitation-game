@@ -29,6 +29,7 @@ export default class Quanbit {
   public roomId: string;
   private mainId: string;
   private lastTime: number | null;
+  private intervalId: NodeJS.Timeout | null;
 
   constructor(type: GameType, id: string, roomId: string) {
     this.id = id;
@@ -39,7 +40,7 @@ export default class Quanbit {
     const tools = type === GameType.NightFall ? nightfallTools : eyefoldTools;
 
     this.chat = ai.chats.create({
-      model: "gemma-4-26b-a4b-it",
+      model: "gemma-4-31b-it",
       // model: "gemini-3.5-flash",
       config: {
         systemInstruction:
@@ -61,7 +62,7 @@ export default class Quanbit {
 
     this.lastTime = null;
 
-    setInterval(async () => {
+    this.intervalId = setInterval(async () => {
       const randomDelay = Math.floor(Math.random() * 60000) + 60000;
       if (this.lastTime && (Date.now() - this.lastTime >= randomDelay)) {
         let text = `You have not say anything for ${Date.now() - this.lastTime}ms. You can decide to say something or not.`;
@@ -78,6 +79,13 @@ export default class Quanbit {
         });
       }
     }, 30000);
+  }
+
+  gameEnded() {
+    this.chat = null;
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+    }
   }
 
   async gameStarted() {

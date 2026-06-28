@@ -101,6 +101,7 @@ export const aiWorker = new Worker(
               }, action.typingDelayMs);
             });
           }
+
           createdChats.push(chat);
         }
 

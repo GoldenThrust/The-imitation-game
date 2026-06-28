@@ -78,6 +78,9 @@ export const gameWorker = new Worker(
         });
 
         players.forEach((player) => {
+          const quanbit = quanbits.get(player.id);
+
+          quanbit?.gameEnded();
           quanbits.delete(player.id);
         });
 
