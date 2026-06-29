@@ -73,7 +73,7 @@ app.get("/api/room", async (req, res) => {
 
     if (
       gameType === GameType.NightFall &&
-      players.length % Math.floor(Math.random() * 4) === 0
+      players.length % Math.floor((Math.random() * 4) + 2) === 0
     ) {
       await joinQueue.add("join", {
         gameId: game.id,
@@ -229,7 +229,7 @@ app.get("/api/game-room/:id/daybreak", async (req, res) => {
     return res.json({
       message: "successful",
       players,
-      game
+      game,
     });
   } catch (error) {
     console.error(error);
