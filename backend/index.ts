@@ -35,6 +35,7 @@ app.get("/api/room", async (req, res) => {
       where: {
         type: gameType,
         active: true,
+        endAt: null
       },
     });
 

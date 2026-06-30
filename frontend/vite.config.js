@@ -11,6 +11,6 @@ export default defineConfig({
     tailwindcss()
   ],
   build: {
-    outDir: '../dist/client'
+    outDir: '../backend/dist/client'
   }
 })

@@ -177,18 +177,42 @@ io.on("connection", async (socket) => {
       try {
         setTimeout(async () => {
           const activeSocket = getActiveSocket(playerId as string);
-          if (activeSocket) {
-            return;
-          }
+          if (activeSocket) return;
 
-          const player = await prisma.player.update({
+          const player = await prisma.player.findUnique({
             where: {
               id: playerId as string,
             },
-            data: {
-              kicked: true,
+          });
+
+          if (!player) return;
+
+          const game = await prisma.game.findUnique({
+            where: {
+              id: player.gameId,
             },
           });
+
+          if (!game) return;
+
+          if (game.startAt) {
+            if ((game.type = GameType.EyeFold)) {
+              await prisma.game.update({
+                where: {
+                  id: player.gameId,
+                },
+                data: {
+                  endAt: new Date(),
+                },
+              });
+            }
+          } else {
+            await prisma.player.delete({
+              where: {
+                id: playerId as string,
+              },
+            });
+          }
 
           io.to(roomId as string).emit("player:left", player);
         }, 2000);

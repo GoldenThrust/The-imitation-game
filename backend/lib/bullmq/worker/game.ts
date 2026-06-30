@@ -13,6 +13,37 @@ export const gameWorker = new Worker(
     try {
       const { gameId, action } = job.data;
 
+      if (action === "queue") {
+        const game = await prisma.game.findUnique({
+          where: { id: gameId },
+        });
+
+        if (!game) {
+          console.warn(`Game ${gameId} not found.`);
+          return;
+        }
+
+        if (!game.startAt) {
+          setTimeout(async () => {
+            const game = await prisma.game.findUnique({
+              where: {
+                id: gameId,
+                startAt: {
+                  lte: new Date(),
+                },
+              },
+            });
+
+            if (!game) {
+              gameQueue.add("game-queue", {
+                gameId,
+                action: "end",
+              });
+            }
+          }, 300000);
+        }
+      }
+
       if (action === "start") {
         const gameAlreadyStarted = await prisma.game.findFirst({
           where: {
