@@ -203,7 +203,7 @@ export default function NightfallRoom() {
   const selectedPlayer = players.find(p => p.id === selected);
 
   return (
-    <div className="min-h-screen bg-black flex flex-col relative">
+    <div className="h-screen bg-black flex flex-col relative">
       {toast && (
         <div className="absolute top-16 left-1/2 -translate-x-1/2 z-20 bg-[#1c1c20] border border-[#2a2a30] text-gray-200 text-xs px-4 py-2 rounded-full shadow-lg">
           {toast}

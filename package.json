@@ -11,6 +11,7 @@
     "install:server": "cd backend && npm install && npx prisma migrate dev --name init && npx prisma generate",
     "install": "npm run install:client && npm run install:server",
     "start": "cd backend && npm run start",
+    "dev": "cd backend && npm run dev",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
