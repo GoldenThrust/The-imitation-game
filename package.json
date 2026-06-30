@@ -7,6 +7,9 @@
     "build:client": "cd frontend && npm run build",
     "build:server": "cd backend && npm run build",
     "build": "npm run build:server && npm run build:client",
+    "install:client": "cd frontend && npm install",
+    "install:server": "cd backend && npm install && npx prisma migrate dev --name init && npx prisma generate",
+    "install": "npm run install:client && npm run install:server",
     "start": "cd backend && npm run start",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
