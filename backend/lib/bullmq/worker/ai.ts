@@ -33,7 +33,7 @@ export const aiWorker = new Worker(
       }
 
       const newText = isSystemMessage
-        ? `System: ${text}`
+        ? `System Instruction: ${text}`
         : `Player ${from}: ${text}`;
 
       const actions = await quanbit.sendMessageToAI(newText);

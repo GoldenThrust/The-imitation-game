@@ -30,7 +30,7 @@ export const respondToMessageTool = {
 export const voteAgainstTool = {
   name: "voteAgainst",
   description:
-    "Cast your vote against a player for this round (Nightfall only).",
+    "Cast your vote against a player.",
   parameters: {
     type: Type.OBJECT,
     properties: {

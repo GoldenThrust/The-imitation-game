@@ -74,7 +74,7 @@ app.get("/api/room", async (req, res) => {
 
     if (
       gameType === GameType.NightFall &&
-      humanPlayers.length % Math.floor((Math.random() * 4) + 2) === 0
+      humanPlayers.length % Math.floor((Math.random() * 4) + 2) === 1
     ) {
       await joinQueue.add("join", {
         gameId: game.id,

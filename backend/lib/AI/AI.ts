@@ -30,12 +30,14 @@ export default class Quanbit {
   private mainId: string;
   private lastTime: number | null;
   private intervalId: NodeJS.Timeout | null;
+  private jobId: string | undefined;
 
   constructor(type: GameType, id: string, roomId: string) {
     this.id = id;
     this.gameType = type;
     this.roomId = roomId;
     this.mainId = type === GameType.NightFall ? this.id : this.id.split("-")[0];
+    this.jobId;
 
     const tools = type === GameType.NightFall ? nightfallTools : eyefoldTools;
 
@@ -61,24 +63,27 @@ export default class Quanbit {
     });
 
     this.lastTime = null;
+    this.intervalId = null;
 
-    this.intervalId = setInterval(async () => {
-      const randomDelay = Math.floor(Math.random() * 60000) + 60000;
-      if (this.lastTime && (Date.now() - this.lastTime >= randomDelay)) {
-        let text = `You have not say anything for ${Date.now() - this.lastTime}ms. You can decide to say something or not.`;
+    if (this.gameType === GameType.EyeFold) {
+      this.intervalId = setInterval(async () => {
+        const randomDelay = Math.floor(Math.random() * 60000) + 60000;
+        if (this.lastTime && Date.now() - this.lastTime >= randomDelay) {
+          let text = `You have not say anything for ${Date.now() - this.lastTime}ms. You can decide to say something or not.`;
 
-        this.addMessageToQueue({
-          gameId: this.roomId,
-          from: this.id,
-          to: this.id,
-          text,
-          chatId: 0,
-          respondSocket: this.roomId as string,
-          myId: this.id,
-          system: true,
-        });
-      }
-    }, 30000);
+          this.addMessageToQueue({
+            gameId: this.roomId,
+            from: this.id,
+            to: this.id,
+            text,
+            chatId: 0,
+            respondSocket: this.roomId as string,
+            myId: this.id,
+            system: true,
+          });
+        }
+      }, 30000);
+    }
   }
 
   gameEnded() {
@@ -130,9 +135,20 @@ export default class Quanbit {
   }) {
     this.lastTime = Date.now();
     data["myId"] = this.id;
-    await aiQueue.add("respond", data, {
-      delay: data.system !== true ? responseDelay(data.text) : 0,
-    });
+
+    const intervalId = setInterval(async () => {
+      const job = await aiQueue.getJob(this.jobId as string);
+      const state = await job?.getState();
+
+      if (!state || state === "completed" || state === "failed") {
+        clearInterval(intervalId);
+        const job = await aiQueue.add("respond", data, {
+          delay: data.system !== true ? responseDelay(data.text) : 0,
+        });
+
+        this.jobId = job.id;
+      }
+    }, 2000);
   }
 
   /**
