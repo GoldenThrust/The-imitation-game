@@ -49,18 +49,22 @@ git clone https://github.com/GoldenThrust/The-imitation-game.git
 cd ./The-imitation-game
 
 # install
-cd /backend
-npm install
-cd /frontend
 npm install
 
+cd /backend
+cp .env.example .env
+cd /frontend
 cp .env.example .env
 
 # run
 cd /backend
 npm run dev
-cd /frontend
-npm run dev
+
+# build
+npm run build
+
+# start
+npm run start
 ```
 
 
